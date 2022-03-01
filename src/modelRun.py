@@ -53,15 +53,11 @@ class ModelRun:
             if self.time in sb.projParams.timeseries_data[time_profile]['InTravel']:
                 inTravel_pc = sb.projParams.timeseries_data[time_profile]['InTravel'][self.time]
             else:
-                # what do we do? try going backwards and forwards until we find a match
+                # try going backwards until we find a match, e.g 9.45 falls into 9.40-9.50 slot
                 inTravel_pc = 0  # fallback value
                 try_mins = 1
-                while try_mins <= 60:  # up to an hour AFTER (earlier is wrong, commented out)
-                    #try_time = self.addMins(self.time, -(try_mins))  # try earlier first
-                    #if try_time in sb.projParams.timeseries_data[time_profile]['InTravel']:
-                    #    inTravel_pc = sb.projParams.timeseries_data[time_profile]['InTravel'][try_time]
-                    #    break
-                    try_time = self.addMins(self.time, try_mins)  # try later
+                while try_mins <= 60:  # up to an hour BEFORE
+                    try_time = self.addMins(self.time, -(try_mins))
                     if try_time in sb.projParams.timeseries_data[time_profile]['InTravel']:
                         inTravel_pc = sb.projParams.timeseries_data[time_profile]['InTravel'][try_time]
                         break
@@ -73,11 +69,7 @@ class ModelRun:
                 onSite_pc = 0
                 try_mins = 1
                 while try_mins <= 60:
-                    #try_time = self.addMins(self.time, -(try_mins))
-                    #if try_time in sb.projParams.timeseries_data[time_profile]['OnSite']:
-                    #    onSite_pc = sb.projParams.timeseries_data[time_profile]['OnSite'][try_time]
-                    #    break
-                    try_time = self.addMins(self.time, try_mins)
+                    try_time = self.addMins(self.time, -(try_mins))
                     if try_time in sb.projParams.timeseries_data[time_profile]['OnSite']:
                         onSite_pc = sb.projParams.timeseries_data[time_profile]['OnSite'][try_time]
                         break

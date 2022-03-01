@@ -412,8 +412,8 @@ class ProjectParams:
         # dest_array = np.column_stack([dest_east, dest_north, dest_wad])
 
     def covertWADs(self, wad_list):
-        # take a list of WADs as strings, return a new list of lists of tuples:
-        # [  [ (radius, percent), ... ], [ ... ] ... ]
+        # take a list of WADs as strings, return a new list of lists of tuples (now lists, so we can add to them):
+        # [  [ [radius, percent], ... ], [ ... ] ... ]
 
         # get rid of the pipe separator
         # dest_df_wad = wad_list.str.split('|')
@@ -434,8 +434,8 @@ class ProjectParams:
                     perc = int(wad_pairs)
                     radius = 0  # set the radius to zero if not specified
 
-                wad_tuple = [radius, perc]  # NOT a tuple, use array so we can append to it later
-                wad_pairs_list.append(wad_tuple)
+                wad_pair = [radius, perc]  # NOT a tuple, use array so we can append to it later
+                wad_pairs_list.append(wad_pair)
 
             dest_wad.append(wad_pairs_list)
 

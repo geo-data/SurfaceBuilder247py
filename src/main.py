@@ -86,7 +86,7 @@ def main():
 
         try:
             ageband = '18_64'
-            run_date = datetime.date(2020, 2, 25)
+            run_date = datetime.date(2020, 2, 25)  # currently not used
             run_time = datetime.time(9, 40, 0)
 
             sb.runSBModel(ageband, run_date, run_time)
