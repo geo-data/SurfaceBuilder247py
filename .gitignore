@@ -1,0 +1,11 @@
+# top level to ignore
+
+**/__pycache__
+**/Data
+**/_samples
+**/.svn
+**/.DS_Store
+*.bak
+*~
+\#*#
+.#*

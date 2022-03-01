@@ -1,0 +1,36 @@
+
+Description of the algorithm implemented by the modelRun class (work in progress)
+
+   # make a copy of the origin total pop array for this ageband
+
+   # loop through each destination collection
+
+   #     grab the time profile for this collection
+
+   #     find the on site / in travel % for the specified time (from timeseries)
+
+   #     loop through each destination row in the collection
+
+   #         grab the population for the specified ageband
+   #            (calculated on load, using the total pop and ageband percentages)
+
+   #             calculate for destination required OnSite Pop / InTravel Pop
+
+   #             loop through each WAD pair (note nearest always first)
+   #                 add empty origin pop count and origin list to each WAD list
+
+   #             loop through each origin
+   #                 calculate distance to current destination
+   #                   work through WADs stepping through smallest to largest radius
+   #                   add index to origin list for smallest matching WAD 
+   #                   update pop total for corresponding matching WAD
+
+   #             loop through each WAD pair again, smallest to largest radius
+   #                 for each one with total origin pop > 0
+   #                    for each origin in the list
+   #                       calc ratio of origin pop to total orig pop
+   #                       remove from origins
+   #                       remove from WAD pop total
+   #                         pass pop total to next WAD (or pull from next)
+   #                         pass origins to next WAD (or pull from next)
+   #                       (later) remove from inTravel/onSite grids
