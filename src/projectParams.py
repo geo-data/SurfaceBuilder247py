@@ -405,7 +405,7 @@ class ProjectParams:
             except IOError as e:
                 logging.error(e)
 
-        logging.info('  Total Destination datasets / rows (.projParams.destination_data): '
+        logging.info('\n  Total Destination datasets / rows (.projParams.destination_data): '
                      + str(len(self.destination_data)) + ' / ' + str(total_rows))
 
         # go across to numpy array at this point? 

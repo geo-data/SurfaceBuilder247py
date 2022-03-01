@@ -12,7 +12,7 @@ import logging
 import datetime
 import math
 
-DEST_DEBUG_LIMIT = 1000    # limit the number of rows we process (for each dest collection) for testing
+DEST_DEBUG_LIMIT = -1    # limit the number of rows we process (for each dest collection) for testing
 ORIG_DEBUG_LIMIT = -1    # set to a number or -1 for all of them
 
 # A class for carrying out SB247 model runs
@@ -85,6 +85,10 @@ class ModelRun:
 
             logging.info('    dest percentages for inTravel: '
                          + str(inTravel_pc) + '  onSite: ' + str(onSite_pc))
+
+            # if we need to distribute unused origin pop to more distant WADs
+            dest_inTravel_ratio = inTravel_pc / (inTravel_pc + onSite_pc)
+            dest_onSite_ratio = onSite_pc / (inTravel_pc + onSite_pc)
 
             # loop through each destination row in the collection
 
@@ -191,6 +195,8 @@ class ModelRun:
 
                     if available_pop > 0:  # some origin population is available to take
 
+                        available_origins.extend(wad[3]) # add these origins to the available list
+
                         if available_pop > residue_total:
                             # enough to satisfy requirement fully, satisfy all residue
                             wad_remove_total = residue_total
@@ -198,12 +204,11 @@ class ModelRun:
                             wad_remove_onSite = residue_onSite
                             residue_inTravel = 0
                             residue_onSite = 0
-                            available_origins.extend(wad[3])
                         else:
                             # not enough origin pop in this WAD, use it all up and update residues
                             wad_remove_total = available_pop
-                            wad_remove_inTravel = wad_remove_total * inTravel_pc / 100
-                            wad_remove_onSite = wad_remove_total * onSite_pc / 100
+                            wad_remove_inTravel = wad_remove_total * dest_inTravel_ratio
+                            wad_remove_onSite = wad_remove_total * dest_onSite_ratio
                             residue_inTravel -= wad_remove_inTravel
                             residue_onSite -= wad_remove_onSite
                             logging.info('not enough origin pop in this WAD!')

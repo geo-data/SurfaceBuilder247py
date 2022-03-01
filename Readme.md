@@ -9,15 +9,15 @@ A Python (3.x and above) redevelopment of the original VB code.
 
 `src/` - sources files
 
-> `main.py` - sample main Python entry program
+> `main.py` - A sample main Python entry program
 > 
-> `sb247.py` - ...
+> `sb247.py` - The main SB247 Class, the container for all functionality and data
 > 
-> `projectParams.py` - ...
+> `projectParams.py` - Stores all Project parameters
 > 
-> `modelRun.py` - ...
+> `modelRun.py` - Run the model including the main algorithms
 > 
-> `unit_tests.py`- ... (requires sample Data)
+> `unit_tests.py`- Perform a series of validations (requires sample Data)
 
 e.g. run:
 
