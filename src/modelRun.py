@@ -12,12 +12,13 @@ import logging
 import datetime
 import time
 import math
+import numpy as np
 
 DEST_DEBUG_LIMIT = -1    # limit the number of rows we process (for each dest collection) for testing
 ORIG_DEBUG_LIMIT = -1    # set to a number or -1 for all of them
 
-DEST_SAMPLE_RATE = 20    # process 1 in N rows of the dest table, for testing
-ORIG_SAMPLE_RATE = 10    # set to 1 for all of them
+DEST_SAMPLE_RATE = 20     # process 1 in N rows of the dest table, for testing
+ORIG_SAMPLE_RATE = 1     # set to 1 for all of them
 
 # A class for carrying out SB247 model runs
 
@@ -39,8 +40,12 @@ class ModelRun:
         loop_count = 0
         initialTime = time.time()
 
-        # a local copy of the relevant origin populations
-        originPopData = sb.projParams.origin_subgroups_pop[self.ageband].copy()
+        # make a copy of the relevant origin populations
+        self.originPopData = sb.projParams.origin_subgroups_pop[self.ageband].copy()
+        #originPopData = np.array(sb.projParams.origin_subgroups_pop[self.ageband])
+
+        originInitialPop = sum(self.originPopData)  # record initial total pop in this ageband
+        destIncrease = 0  # (for checking) a record of how many dest pop transfers were made
 
         # make copies of the background data for inTravel and onSite data
         self.grid_inTravel = sb.projParams.background_array.copy()
@@ -105,6 +110,7 @@ class ModelRun:
                 dest_inTravel_pop = dest_pop * inTravel_pc / 100
                 dest_onSite_pop = dest_pop * onSite_pc / 100
                 dest_req_pop = dest_inTravel_pop + dest_onSite_pop
+                destIncrease += dest_req_pop
 
                 dest_E = destdata['eastings'][dest]
                 dest_N = destdata['northings'][dest]
@@ -118,7 +124,7 @@ class ModelRun:
 
                 dest_remove_check = 0
 
-                # loop through each WAD pair (sort question - nearest first?!!)
+                # loop through each WAD pair (assume nearest is always first)
 
                 dest_wad = destdata['WAD'][dest]
 
@@ -143,7 +149,7 @@ class ModelRun:
                     orig_E = sb.projParams.origin_eastings[origin]
                     orig_N = sb.projParams.origin_northings[origin]
 
-                    orig_pop = originPopData[origin]
+                    orig_pop = self.originPopData[origin]
 
                     # pythagoras gives us the distance between origin and destination
                     dist = math.sqrt((dest_E - orig_E) ** 2 + (dest_N - orig_N) ** 2)
@@ -219,11 +225,11 @@ class ModelRun:
                         # let's do some removing of pops from origins
                         for origin in available_origins:
                             # go through each origin index, remove in proportion with origin pop
-                            pop = originPopData[origin]
+                            pop = self.originPopData[origin]
                             orig_remove_total = pop / available_pop * wad_remove_total
                             orig_remove_inTravel = pop / available_pop * wad_remove_inTravel
                             orig_remove_onSite = pop / available_pop * wad_remove_onSite
-                            originPopData[origin] -= orig_remove_total
+                            self.originPopData[origin] -= orig_remove_total
                             logging.debug('        removed '
                                          + str(round(orig_remove_total,3))
                                          + ' from ' + str(origin) + ' (' + str(round(pop,3)) + ')')
@@ -231,8 +237,8 @@ class ModelRun:
 
                         available_pop -= wad_remove_total  # update total pop available
 
-                        if available_pop == 0.0:
-                            available_origins = []  # all used up, start with empty array of origins
+                        if available_pop == 0.0:  # may need some rounding, or v small val comparison?
+                            available_origins = []  # all used up, continue with empty array of origins
 
                         logging.debug('        Orig remove check: ' + str(round(orig_remove_check,3)))
                         dest_remove_check += orig_remove_check
@@ -243,8 +249,15 @@ class ModelRun:
                 else:
                     logging.info('      Dest remove check FAIL: ' + str(round(dest_remove_check, 3)))
 
+        originFinalPop = sum(self.originPopData)  # record initial total pop in this ageband
+
         logging.info('\n  Run Complete - Loop count: ' + str(loop_count)
                      + ' in ' + str(round(time.time() - initialTime,1)) + ' seconds')
+
+        logging.info('\n  Origin pop initial / final / diff: '
+                     + str(round(originInitialPop,3)) + ' / ' + str(round(originFinalPop,3))
+                     + ' / ' + str(round(originInitialPop - originFinalPop,3))
+                     + '\n  Dest pop requested: ' + str(round(destIncrease,3)))
 
         # Later: major flows, populate grids
 

@@ -90,7 +90,7 @@ def main():
             run_time = datetime.time(9, 40, 0)
 
             sb.runSBModel(ageband, run_date, run_time)
-            logging.info('Run successful.')
+            logging.info('\nRun successful.')
 
         except Exception as err:
             logging.info('Problem running model: ' + str(err))
