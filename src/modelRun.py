@@ -10,10 +10,14 @@
 
 import logging
 import datetime
+import time
 import math
 
 DEST_DEBUG_LIMIT = -1    # limit the number of rows we process (for each dest collection) for testing
 ORIG_DEBUG_LIMIT = -1    # set to a number or -1 for all of them
+
+DEST_SAMPLE_RATE = 20    # process 1 in N rows of the dest table, for testing
+ORIG_SAMPLE_RATE = 10    # set to 1 for all of them
 
 # A class for carrying out SB247 model runs
 
@@ -33,6 +37,7 @@ class ModelRun:
 
         # loop through each destination collection
         loop_count = 0
+        initialTime = time.time()
 
         # a local copy of the relevant origin populations
         originPopData = sb.projParams.origin_subgroups_pop[self.ageband].copy()
@@ -89,6 +94,9 @@ class ModelRun:
                 if dest == DEST_DEBUG_LIMIT:  # fewer rows for debugging
                     break
 
+                if dest % DEST_SAMPLE_RATE != 0:  # sample the dest
+                    continue
+
                 # grab the population for the specified age category
 
                 dest_pop = destdata['subgroups_pop'][self.ageband][dest]
@@ -126,6 +134,9 @@ class ModelRun:
 
                     if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
                         break
+
+                    if origin % ORIG_SAMPLE_RATE != 0:  # sample the dest
+                        continue
 
                     loop_count += 1
 
@@ -203,7 +214,7 @@ class ModelRun:
                             wad_remove_onSite = wad_remove_total * dest_onSite_ratio
                             residue_inTravel -= wad_remove_inTravel
                             residue_onSite -= wad_remove_onSite
-                            logging.info('not enough origin pop in this WAD!')
+                            logging.debug('not enough origin pop in this WAD!')
 
                         # let's do some removing of pops from origins
                         for origin in available_origins:
@@ -220,6 +231,9 @@ class ModelRun:
 
                         available_pop -= wad_remove_total  # update total pop available
 
+                        if available_pop == 0.0:
+                            available_origins = []  # all used up, start with empty array of origins
+
                         logging.debug('        Orig remove check: ' + str(round(orig_remove_check,3)))
                         dest_remove_check += orig_remove_check
 
@@ -229,9 +243,10 @@ class ModelRun:
                 else:
                     logging.info('      Dest remove check FAIL: ' + str(round(dest_remove_check, 3)))
 
-        logging.info('  Run Complete - Loop count: ' + str(loop_count))
+        logging.info('\n  Run Complete - Loop count: ' + str(loop_count)
+                     + ' in ' + str(round(time.time() - initialTime,1)) + ' seconds')
 
-        # Later: major flows, date intelligence, populate grids
+        # Later: major flows, populate grids
 
         # next: remove from origin grid cells (intravel/onsite) - how!?
         #       add to destination grid cells?
