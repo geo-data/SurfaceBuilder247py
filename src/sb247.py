@@ -164,15 +164,30 @@ class SB247:
         else:
             self.projParams.loadDestFiles(self.projDir + pathname + '/')
 
-    def runSBModel(self, ageBand, runDate, runTime):
+    def runSBModel(self, ageBand, runDate, runTime,
+                 destination_sample_rate = 1,
+                 origin_sample_rate = 1):
 
         logging.info(SPACER + 'Running the model...' + SPACER2)
 
-        self.modelRun = ModelRun(ageBand, runDate, runTime)
+        self.modelRun = ModelRun(ageBand, runDate, runTime,
+                                 destination_sample_rate, origin_sample_rate)
 
-        # pass this object as a parameter
+        # sample_rate optional parameters are for testing model runs more quickly by sampling destinations / origins
+        # not sensical for real data modelling
 
-        # maybe don't need modelRun as a class var, could instantiate here
-        # unless we set and check params in separate methods?
+        # pass this object as a parameter for access to instance data
 
         self.modelRun.runModel(self)
+
+    def createGridData(self):
+
+        logging.info(SPACER + 'Creating grid data from model outputs...' + SPACER2)
+
+        self.modelRun.createGridData(self)
+
+    def saveGridData(self, file_prefix):
+
+        logging.info(SPACER + 'Saving grid data to files...' + SPACER2)
+
+        self.modelRun.saveGridData(self, file_prefix)

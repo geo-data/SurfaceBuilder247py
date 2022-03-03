@@ -17,14 +17,14 @@ import numpy as np
 DEST_DEBUG_LIMIT = -1    # limit the number of rows we process (for each dest collection) for testing
 ORIG_DEBUG_LIMIT = -1    # set to a number or -1 for all of them
 
-DEST_SAMPLE_RATE = 20     # process 1 in N rows of the dest table, for testing
-ORIG_SAMPLE_RATE = 1     # set to 1 for all of them
 
 # A class for carrying out SB247 model runs
 
 class ModelRun:
 
-    def __init__(self, ageBand, runDate, runTime):
+    def __init__(self, ageBand, runDate, runTime,
+                 dest_sample_rate,
+                 orig_sample_rate):
 
         self.ageband = ageBand
         self.date = runDate
@@ -33,6 +33,17 @@ class ModelRun:
         logging.info('  Age band (.modelRun.ageband): ' + str(self.ageband))
         logging.info('  Date     (.modelRun.date):    ' + str(self.date))
         logging.info('  Time     (.modelRun.time):    ' + str(self.time))
+
+        # for testing model runs more quickly by sampling destinations / origins
+        # not sensical for real data modelling
+        self.dest_sample_rate = dest_sample_rate
+        self.orig_sample_rate = orig_sample_rate
+
+        if dest_sample_rate > 1:
+            logging.info('  Sampling 1 in ' + str(dest_sample_rate) + ' destinations')
+
+        if orig_sample_rate > 1:
+            logging.info('  Sampling 1 in ' + str(orig_sample_rate) + ' origins')
 
     def runModel(self, sb):
 
@@ -47,9 +58,10 @@ class ModelRun:
         originInitialPop = sum(self.originPopData)  # record initial total pop in this ageband
         destIncrease = 0  # (for checking) a record of how many dest pop transfers were made
 
-        # make copies of the background data for inTravel and onSite data
-        self.grid_inTravel = sb.projParams.background_array.copy()
-        self.grid_onSite = sb.projParams.background_array.copy()
+        # create arrays to store all of the destination data values needed (and their grid indexes)
+        self.dest_inTravel = []
+        self.dest_onSite = []
+        self.dest_XY = []
 
         for destdata in sb.projParams.destination_data:
 
@@ -99,7 +111,7 @@ class ModelRun:
                 if dest == DEST_DEBUG_LIMIT:  # fewer rows for debugging
                     break
 
-                if dest % DEST_SAMPLE_RATE != 0:  # sample the dest
+                if dest % self.dest_sample_rate != 0:  # sample the dest
                     continue
 
                 # grab the population for the specified age category
@@ -111,6 +123,11 @@ class ModelRun:
                 dest_onSite_pop = dest_pop * onSite_pc / 100
                 dest_req_pop = dest_inTravel_pop + dest_onSite_pop
                 destIncrease += dest_req_pop
+
+                # save values and grid index for our output grids
+                self.dest_inTravel.append(dest_inTravel_pop)
+                self.dest_onSite.append(dest_onSite_pop)
+                self.dest_XY.append(destdata['XY'][dest])
 
                 dest_E = destdata['eastings'][dest]
                 dest_N = destdata['northings'][dest]
@@ -141,7 +158,7 @@ class ModelRun:
                     if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
                         break
 
-                    if origin % ORIG_SAMPLE_RATE != 0:  # sample the dest
+                    if origin % self.orig_sample_rate != 0:  # sample the dest
                         continue
 
                     loop_count += 1
@@ -259,17 +276,80 @@ class ModelRun:
                      + ' / ' + str(round(originInitialPop - originFinalPop,3))
                      + '\n  Dest pop requested: ' + str(round(destIncrease,3)))
 
-        # Later: major flows, populate grids
-
-        # next: remove from origin grid cells (intravel/onsite) - how!?
-        #       add to destination grid cells?
-        #(X, Y) = sb.projParams.origin_XY[origin]
-        #self.grid_inTravel[X, Y] -= remove_inTravel
-        #self.grid_onSite[X, Y] -= remove_onSite
-
         # raise ValueError('sorry, not good')
 
     def addMins(self, tm, mins):
         fulldate = datetime.datetime(100, 1, 1, tm.hour, tm.minute, 0)
         fulldate = fulldate + datetime.timedelta(minutes=mins)
         return fulldate.time()
+
+    def createGridData(self, sb):
+
+        # create grids for each required source of data
+
+        rows = sb.projParams.background_rows
+        cols = sb.projParams.background_cols
+
+        logging.info('   Origins remaining     (.modelRun.grid_origins) ...')
+        self.grid_origins = self.createGrid(rows, cols, sb.projParams.origin_XY,self.originPopData)
+
+        logging.info('   Destinations inTravel (.modelRun.grid_dest_inTravel)...')
+        self.grid_dest_inTravel = self.createGrid(rows, cols, self.dest_XY, self.dest_inTravel)
+
+        logging.info('   Destinations onSite   (.modelRun.grid_dest_onSite)...')
+        self.grid_dest_onSite = self.createGrid(rows, cols, self.dest_XY, self.dest_onSite)
+
+    def saveGridData(self, sb, file_prefix):
+
+        # save grid data to files
+
+        # create a grid file header
+        header = ''
+        for (param, value) in sb.projParams.background_header.items():
+            header = header + param + ' ' + str(value) + '\n'
+
+        # use flipud (flip up down) as ASCII Grids are written top to bottom
+
+        filename = sb.projDir + file_prefix + 'origins.asc'
+        np.savetxt(filename, np.flipud(self.grid_origins), fmt='%.4f', comments='', header=header)
+        logging.info('   Written: ' + filename)
+
+        filename = sb.projDir + file_prefix + 'dest_inTravel.asc'
+        np.savetxt(filename, np.flipud(self.grid_dest_inTravel), fmt='%.4f', comments='', header=header)
+        logging.info('   Written: ' + filename)
+
+        filename = sb.projDir + file_prefix + 'dest_onSite.asc'
+        np.savetxt(filename, np.flipud(self.grid_dest_onSite), fmt='%.4f', comments='', header=header)
+        logging.info('   Written: ' + filename)
+
+        logging.info('\n  Model Data Saved.')
+
+    def createGrid(self, rows, cols, XY_array, vals_array):
+
+        grid = np.zeros((rows,cols))
+
+        minX = 10  # just for checking, we remove/comment out later
+        maxX = 10
+        minY = 10
+        maxY = 10
+
+        for row in range(0, len(XY_array)):
+            (X, Y) = XY_array[row]
+
+            if X < minX:
+                minX = X
+            if X > maxX:
+                maxX = X
+            if Y < minY:
+                minY = Y
+            if Y > maxY:
+                maxY = Y
+
+            if X >= rows or Y >= cols:
+                logging.info('     Ignoring out of bounds value at row '
+                             + str(row) + ' ('+ str(X)+','+str(Y)+')')
+            else:
+                val = vals_array[row]
+                grid[Y,X] = val
+
+        return grid

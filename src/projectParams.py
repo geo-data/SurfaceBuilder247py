@@ -97,8 +97,8 @@ class ProjectParams:
                     else:
                         break
 
-            # read data array
-            self.background_array = np.loadtxt(filename, skiprows=header_rows, dtype='float64')
+            # read background data array - up down flip applied due to ASCII grid top to bottom writing
+            self.background_array = np.flipud(np.loadtxt(filename, skiprows=header_rows, dtype='float64'))
 
             # set some values from the header 
 
@@ -325,17 +325,17 @@ class ProjectParams:
                     # calculate Cell X and Y references for each destination
                     csize = self.background_csize
                     dest_data[
-                        'origin_XY'] = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
+                        'XY'] = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
 
                     for dest in range(0, len(dest_data['eastings'])):
                         dest_E = dest_data['eastings'][dest]
                         dest_N = dest_data['northings'][dest]
                         dest_X = round((dest_E - self.background_bl_east) / csize)
                         dest_Y = round((dest_N - self.background_bl_north) / csize)
-                        dest_data['origin_XY'].append((dest_X, dest_Y))
+                        dest_data['XY'].append((dest_X, dest_Y))
 
                     logging.info('    X,Y indexes: '
-                                 + str(dest_data['origin_XY'][0:5]) + ' ... Count: ' + str(len(dest_data['origin_XY'])))
+                                 + str(dest_data['XY'][0:5]) + ' ... Count: ' + str(len(dest_data['XY'])))
 
                     pop_column = int(dest_header.iloc[7, 1]) - 1
 
