@@ -59,16 +59,16 @@ class MyTestCases(unittest.TestCase):
         # We can just check calculated values, which will be wrong if anything else is!
 
         msg = pre + 'Analysis Area TR Easting = 381000' + post
-        assert sb.aarea_tr_east == 381000, msg
+        assert sb.projParams.aarea_tr_east == 381000, msg
 
         msg = pre + 'Analysis Area TR Northing = 160000' + post
-        assert sb.aarea_tr_north == 168000, msg
+        assert sb.projParams.aarea_tr_north == 168000, msg
 
         msg = pre + 'Study Area TR Easting = 389000' + post
-        assert sb.sarea_tr_east == 389000, msg
+        assert sb.projParams.sarea_tr_east == 389000, msg
 
         msg = pre + 'Study Area TR Northing = 176000' + post
-        assert sb.sarea_tr_north == 176000, msg
+        assert sb.projParams.sarea_tr_north == 176000, msg
 
     def test_3_background_file(self):
         # Check values from the background file header
@@ -94,28 +94,27 @@ class MyTestCases(unittest.TestCase):
 
         # Check count and calculated values, which will be wrong if anything else is!
 
-        msg = pre + 'Origin file OA/Easting/Northing count = 2243' + post
-        assert len(sb.projParams.origin_OA) == 2243 \
-               and len(sb.projParams.origin_northings) == 2243 \
-               and len(sb.projParams.origin_northings) == 2243, msg
+        msg = pre + 'Origin file Easting/Northing count within study area  = 998' + post
+        assert len(sb.projParams.origin_data['northings']) == 988 \
+               and len(sb.projParams.origin_data['northings']) == 988, msg
 
-        msg = pre + 'Origin last row OA = E00174329' + post
-        assert sb.projParams.origin_OA[2242] == 'E00174329', msg
+        msg = pre + 'Origin last row ID = E00173096' + post
+        assert sb.projParams.origin_data['ID'][987] == 'E00173096', msg
 
-        msg = pre + 'Origin file Min Easting = 360002' + post
-        assert sb.projParams.origin_eastings_min == 360002, msg
+        msg = pre + 'Origin file Min Easting = 365005' + post
+        assert sb.projParams.origin_eastings_min == 365006, msg
 
-        msg = pre + 'Origin file Max Northing = 180998' + post
-        assert sb.projParams.origin_northings_max == 180998, msg
+        msg = pre + 'Origin file Max Northing = 175950' + post
+        assert sb.projParams.origin_northings_max == 175950, msg
 
-        msg = pre + 'Origin file last row Pop = 335' + post
-        assert sb.projParams.origin_pop_data[2242] == 335, msg
+        msg = pre + 'Origin file last row Pop = 342' + post
+        assert sb.projParams.origin_data['pop_data'][987] == 342, msg
 
         msg = pre + 'Origin file final pop subgroup name = OV65' + post
-        assert sb.projParams.origin_subgroup_names[5] == 'OV65', msg
+        assert sb.projParams.origin_data['subgroup_names'][5] == 'OV65', msg
 
-        msg = pre + 'Origin file final pop subgroup final value = 2.089552' + post
-        assert sb.projParams.origin_subgroups_data['OV65'][2242] == 2.089552, msg
+        msg = pre + 'Origin file final pop subgroup final value = 1.169591' + post
+        assert sb.projParams.origin_data['subgroups_data']['OV65'][987] == 1.169591, msg
 
     def test_5_destination_data(self):
         # Check values from the destination data files
@@ -129,37 +128,37 @@ class MyTestCases(unittest.TestCase):
         dest_check = sb.projParams.destination_data[7]
 
         msg = pre + 'Destination final file time profile = TS01.WKG.2SERV' + post
-        assert dest_check['time_profile'] == 'TS01.WKG.2SERV', msg
+        assert dest_check['time_profiles'][0] == 'TS01.WKG.2SERV', msg
 
         msg = pre + 'Destination final file OA/Easting/Northing/WAD count = 651' + post
-        assert len(dest_check['OA']) == 651 \
-               and len(dest_check['eastings']) == 651 \
-               and len(dest_check['northings']) == 651 \
-               and len(dest_check['WAD']) == 651, msg
+        assert len(dest_check['ID']) == 306 \
+               and len(dest_check['eastings']) == 306 \
+               and len(dest_check['northings']) == 306 \
+               and len(dest_check['WAD']) == 306, msg
 
-        msg = pre + 'Destination final file last row OA = E33050868' + post
-        assert dest_check['OA'][650] == 'E33050868', msg
+        msg = pre + 'Destination final file last row OA = E33050776' + post
+        assert dest_check['ID'][305] == 'E33050776', msg
 
         msg = pre + 'Destination final file last row Easting = 361601' + post
-        assert dest_check['eastings'][650] == 361601, msg
+        assert dest_check['eastings'][305] == 382831, msg
 
         msg = pre + 'Destination final file last row Northing = 174207' + post
-        assert dest_check['northings'][650] == 174207, msg
+        assert dest_check['northings'][305] == 154797, msg
 
-        msg = pre + 'Destination final file last row Pop = 18' + post
-        assert dest_check['pop_data'][650] == 18, msg
+        msg = pre + 'Destination final file last row Pop = 16' + post
+        assert dest_check['pop_data'][305] == 16, msg
 
         msg = pre + 'Destination final file final pop subgroup name = OV65' + post
         assert dest_check['subgroup_names'][5] == 'OV65', msg
 
-        msg = pre + 'Destination final file final pop subgroups final value = 2.257336343' + post
-        assert dest_check['subgroups_data']['OV65'][650] == 2.257336343, msg
+        msg = pre + 'Destination final file final pop subgroups final value = 5.070422535' + post
+        assert dest_check['subgroups_data']['OV65'][305] == 5.070422535, msg
 
         msg = pre + 'Destination final file WAD last row, second tuple radius = 2000 ' + post
-        assert dest_check['WAD'][650][1][0] == 2000, msg
+        assert dest_check['WAD'][305][1][0] == 2000, msg
 
-        msg = pre + 'Destination file WAD last row, third tuple percent = 20 ' + post
-        assert dest_check['WAD'][650][2][1] == 20, msg
+        msg = pre + 'Destination file WAD last row, third tuple percent = 12 ' + post
+        assert dest_check['WAD'][305][2][1] == 12, msg
 
     def test_6_timeseries_file(self):
         # Check count and value from the timeseries file

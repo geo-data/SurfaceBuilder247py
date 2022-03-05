@@ -71,42 +71,42 @@ class SB247:
         # Analysis area params that we use to calculate the top right of bbox
         # (bl = bottom left, tr = top right)
 
-        self.aarea_bl_east = int(self.projParams.analysisarray[0])
-        self.aarea_bl_north = int(self.projParams.analysisarray[1])
-        self.aarea_rows = int(self.projParams.analysisarray[2])
-        self.aarea_cols = int(self.projParams.analysisarray[3])
-        self.aarea_csize = int(self.projParams.analysisarray[4])
+        self.projParams.aarea_bl_east = int(self.projParams.analysisarray[0])
+        self.projParams.aarea_bl_north = int(self.projParams.analysisarray[1])
+        self.projParams.aarea_rows = int(self.projParams.analysisarray[2])
+        self.projParams.aarea_cols = int(self.projParams.analysisarray[3])
+        self.projParams.aarea_csize = int(self.projParams.analysisarray[4])
 
-        logging.info('  BL Easting  (.aarea_bl_east):  ' + str(self.aarea_bl_east))
-        logging.info('  BL Northing (.aarea_bl_north): ' + str(self.aarea_bl_north))
-        logging.info('  Rows        (.aarea_rows):     ' + str(self.aarea_rows))
-        logging.info('  Cols        (.aarea_cols):     ' + str(self.aarea_cols))
-        logging.info('  Cellsize    (.aarea_csize):    ' + str(self.aarea_csize))
+        logging.info('  BL Easting  (.projParams.aarea_bl_east):  ' + str(self.projParams.aarea_bl_east))
+        logging.info('  BL Northing (.projParams.aarea_bl_north): ' + str(self.projParams.aarea_bl_north))
+        logging.info('  Rows        (.projParams.aarea_rows):     ' + str(self.projParams.aarea_rows))
+        logging.info('  Cols        (.projParams.aarea_cols):     ' + str(self.projParams.aarea_cols))
+        logging.info('  Cellsize    (.projParams.aarea_csize):    ' + str(self.projParams.aarea_csize))
 
         # analysis area top right easting = bottom left easting + (cols * cellsize)
-        self.aarea_tr_east = self.aarea_bl_east + (self.aarea_cols * self.aarea_csize)
+        self.projParams.aarea_tr_east = self.projParams.aarea_bl_east + (self.projParams.aarea_cols * self.projParams.aarea_csize)
 
         # analysis area top right northing = bottom left northing + (rows * cellsize)
-        self.aarea_tr_north = self.aarea_bl_north + (self.aarea_rows * self.aarea_csize)
+        self.projParams.aarea_tr_north = self.projParams.aarea_bl_north + (self.projParams.aarea_rows * self.projParams.aarea_csize)
 
-        logging.info('  TR Easting  (.aarea_tr_east):  ' + str(self.aarea_tr_east))
-        logging.info('  TR Northing (.aarea_tr_north): ' + str(self.aarea_tr_north))
+        logging.info('  TR Easting  (.projParams.aarea_tr_east):  ' + str(self.projParams.aarea_tr_east))
+        logging.info('  TR Northing (.projParams.aarea_tr_north): ' + str(self.projParams.aarea_tr_north))
 
         aarea_buffer = self.projParams.buffer
 
         # the bottom left easting of the study area is the analysis area bottom left minus buffer
-        self.sarea_bl_east = self.aarea_bl_east - aarea_buffer
-        self.sarea_bl_north = self.aarea_bl_north - aarea_buffer
+        self.projParams.sarea_bl_east = self.projParams.aarea_bl_east - aarea_buffer
+        self.projParams.sarea_bl_north = self.projParams.aarea_bl_north - aarea_buffer
 
         # the top right easting of the study area is the analysis area top right plus buffer
-        self.sarea_tr_east = self.aarea_tr_east + aarea_buffer
-        self.sarea_tr_north = self.aarea_tr_north + aarea_buffer
+        self.projParams.sarea_tr_east = self.projParams.aarea_tr_east + aarea_buffer
+        self.projParams.sarea_tr_north = self.projParams.aarea_tr_north + aarea_buffer
 
         logging.info('Study Area:')
-        logging.info('  BL Easting  (.sarea_bl_east):  ' + str(self.sarea_bl_east))
-        logging.info('  BL Northing (.sarea_bl_north): ' + str(self.sarea_bl_north))
-        logging.info('  TR Easting  (.sarea_tr_east):  ' + str(self.sarea_tr_east))
-        logging.info('  TR Northing (.sarea_tr_north): ' + str(self.sarea_tr_north))
+        logging.info('  BL Easting  (.projParams.sarea_bl_east):  ' + str(self.projParams.sarea_bl_east))
+        logging.info('  BL Northing (.projParams.sarea_bl_north): ' + str(self.projParams.sarea_bl_north))
+        logging.info('  TR Easting  (.projParams.sarea_tr_east):  ' + str(self.projParams.sarea_tr_east))
+        logging.info('  TR Northing (.projParams.sarea_tr_north): ' + str(self.projParams.sarea_tr_north))
 
     def geometryChecks(self):
 
@@ -114,28 +114,27 @@ class SB247:
 
         # Determine if study area is fully inside the background
 
-        if (self.projParams.background_bl_east > self.sarea_bl_east
-            or self.projParams.background_bl_north > self.sarea_bl_north) \
-                and (self.projParams.background_tr_east < self.sarea_tr_east
-                     or self.projParams.background_tr_north < self.sarea_tr_north):
+        if (self.projParams.background_bl_east > self.projParams.sarea_bl_east
+            or self.projParams.background_bl_north > self.projParams.sarea_bl_north) \
+                and (self.projParams.background_tr_east < self.projParams.sarea_tr_east
+                     or self.projParams.background_tr_north < self.projParams.sarea_tr_north):
             logging.error('  Background does not cover study area, please check the extent.')
         else:
             logging.info('  Background covers the study area.')
 
-        # check to see if origin is wholly within the analysis area.....
-        # CHECK - shouldn't this check be against the study area??
+        # check to see if origin is wholly within the study area
 
-        if (self.projParams.origin_eastings_min < self.aarea_bl_east
-                or self.projParams.origin_northings_min < self.aarea_bl_north):
+        if (self.projParams.origin_eastings_min < self.projParams.sarea_bl_east
+                or self.projParams.origin_northings_min < self.projParams.sarea_bl_north):
 
-            logging.info('  One of the origin centroids is beyond the bottom left extent of the analysis area.')
-        elif (self.projParams.origin_eastings_max > self.aarea_tr_east
-              or self.projParams.origin_northings_max > self.aarea_tr_north):
+            logging.info('  One of the origin centroids is beyond the bottom left extent of the study area.')
+        elif (self.projParams.origin_eastings_max > self.projParams.sarea_tr_east
+              or self.projParams.origin_northings_max > self.projParams.sarea_tr_north):
 
-            logging.info('  One of the origin centroids is beyond the top right extent of the analysis area.')
+            logging.info('  One of the origin centroids is beyond the top right extent of the study area.')
         else:
 
-            logging.info('  Centroids are all within the analysis area.')
+            logging.info('  Centroids are all within the study area.')
 
     def loadBackgroundFromFile(self, filename):
 

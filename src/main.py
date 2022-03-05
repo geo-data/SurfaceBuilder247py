@@ -91,7 +91,7 @@ def main():
 
             sb.runSBModel(ageband, run_date, run_time,
                           # optional testing parameters, for quick model run, remove or set to 1 for normal operation
-                          destination_sample_rate = 20,  # process 1 in N rows of each destination dataset
+                          destination_sample_rate = 1,  # process 1 in N rows of each destination dataset
                           origin_sample_rate = 1         # process 1 in N rows of origin data
                           )
 

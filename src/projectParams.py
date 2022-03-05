@@ -10,6 +10,7 @@
 
 import logging
 import datetime
+import math
 
 # Import additional modules (which will need to be installed)
 
@@ -100,7 +101,7 @@ class ProjectParams:
             # read background data array - up down flip applied due to ASCII grid top to bottom writing
             self.background_array = np.flipud(np.loadtxt(filename, skiprows=header_rows, dtype='float64'))
 
-            # set some values from the header 
+            # set some values from the header
 
             self.background_bl_east = int(self.background_header['xllcorner'])
             self.background_bl_north = int(self.background_header['yllcorner'])
@@ -124,6 +125,30 @@ class ProjectParams:
             logging.info('  Rows        (.projParams.background_rows):     ' + str(self.background_rows))
             logging.info('  Cols        (.projParams.background_cols):     ' + str(self.background_cols))
             logging.info('  Cellsize    (.projParams.background_csize):    ' + str(self.background_csize))
+
+            # populate a background values array with non-zero cells (and filter values to within study area)
+            #   tuples of (x, y, easting, northing, value)
+            self.background_values = []
+            cellcentre = round(self.background_csize / 2)
+            bg_histogram = {}
+            out_of_range = 0
+
+            for (X,Y) in np.ndindex(self.background_array.shape):
+                val = self.background_array[X,Y]
+                if val not in bg_histogram.keys():
+                    bg_histogram[val] = 1
+                else:
+                    bg_histogram[val] += 1
+                if val > 0.001:  # threshold for inclusion
+                    bg_E = self.background_bl_east + self.background_csize * X + cellcentre
+                    bg_N = self.background_bl_north + self.background_csize * Y + cellcentre
+                    if bg_E >= self.sarea_bl_east and bg_E <= self.sarea_tr_east \
+                            and bg_N >= self.sarea_bl_north and bg_N <= self.sarea_tr_north:
+                        self.background_values.append((X, Y, bg_E, bg_N, val))
+                    else:
+                        out_of_range += 1
+
+            logging.info('  Non-zero background cells within Study Area: ' + str(len(self.background_values)) + '  Out of range: ' + str(out_of_range))
 
         except IOError as e:
             logging.error(e)
@@ -187,33 +212,110 @@ class ProjectParams:
 
             with open(filename, 'r') as file_opened:
 
-                # TODO - read and process header info on first 22 lines
+                header = pd.read_csv(filename, index_col=False, header=None, nrows=23)
+
+                # identify locations of various data columns and their defaults
+                col_ID = int(header.iloc[4, 1])
+                col_E = int(header.iloc[5, 1])
+                col_N = int(header.iloc[6, 1])
+                col_Pop = int(header.iloc[7, 1])
+                col_PopSubGroups = int(header.iloc[8, 1])
+
+                lst = header.iloc[9, 1:col_PopSubGroups+1].to_list()
+                col_PopSubGroupsDefaults = [int(elem) for elem in lst]
+
+                lst = header.iloc[9, col_PopSubGroups + 1:2*col_PopSubGroups+1].to_list()
+                col_PopSubGroupsCols = [int(elem) for elem in lst]
+
+                lst = header.iloc[16, 1:col_PopSubGroups+1].to_list()
+                col_MobSubGroupsDefaults = [int(elem) for elem in lst]
+
+                lst = header.iloc[16, col_PopSubGroups + 1:2*col_PopSubGroups+1].to_list()
+                col_MobSubGroupsCols = [int(elem) for elem in lst]
+
+                col_LD = int(header.iloc[12, 2])
+                col_LDdefault = int(header.iloc[12, 1])
+
+                # create a Pandas dataframe and miss out the first 23 rows
                 # header information is on row 23, so start here
-                originData = pd.read_csv(filename, header=[22])
+                origin_df = pd.read_csv(filename, header=[22])
 
-                # get the output area codes from the first column
-                self.origin_OA = originData.iloc[:, 0].to_list()
+                # filter the data to within the Study area
+                # TODO: use column numbers instead of names here
+                bbquery = 'OSEAST >= {} & OSEAST <= {} & OSNRTH >= {} & OSNRTH <= {}'.format(
+                    self.sarea_bl_east, self.sarea_tr_east, self.sarea_bl_north, self.sarea_tr_north)
+                csvData = origin_df.query(bbquery)
 
-                logging.info('  Origin Output Areas  (.projParams.origin_OA):  ' + str(
-                    self.origin_OA[0:5]) + ' ... Count: ' + str(len(self.origin_OA)))
+                # all origin data to be stored inside origins dictionary
+                self.origin_data = {}
 
-                orig_east_list = originData.OSEAST.to_list()
-                # round the coords as they are float
-                self.origin_eastings = [round(elem) for elem in orig_east_list]
+                self.origin_data['ID'] = csvData.iloc[:,col_ID-1].to_list()
 
-                orig_nrth_list = originData.OSNRTH.to_list()
-                # round the coords as they are float
-                self.origin_northings = [round(elem) for elem in orig_nrth_list]
+                self.origin_data['eastings'] = [round(elem) for elem in csvData.iloc[:,col_E-1].to_list()]
+                self.origin_data['northings'] = [round(elem) for elem in csvData.iloc[:, col_N - 1].to_list()]
 
-                logging.info('  Origin Eastings  (.projParams.origin_eastings):  ' + str(
-                    self.origin_eastings[0:5]) + ' ... Count: ' + str(len(self.origin_eastings)))
-                logging.info('  Origin Northings (.projParams.origin_northings): ' + str(
-                    self.origin_northings[0:5]) + ' ... Count: ' + str(len(self.origin_northings)))
+                # get the total population data
+                pop_data = csvData.iloc[:, col_Pop-1]
+                self.origin_data['pop_data'] = pop_data.to_list()
+                self.origin_data['pop_name'] = pop_data.name
 
-                self.origin_eastings_min = min(self.origin_eastings)
-                self.origin_eastings_max = max(self.origin_eastings)
-                self.origin_northings_min = min(self.origin_northings)
-                self.origin_northings_max = max(self.origin_northings)
+                pop_subgroups = csvData.iloc[:, min(col_PopSubGroupsCols)-1:max(col_PopSubGroupsCols)]
+
+                # read in the population subgroups data, calculate the population (for each age band)
+                self.origin_data['subgroup_names'] = []
+                self.origin_data['subgroups_data'] = {}  # we may not need to store these eventually
+                self.origin_data['subgroups_pop'] = {}  # matching dictionary for actual populations
+                subgroups_total = 0
+
+                idx = 0  # which population data subgroup this is
+                for (columnName, columnData) in pop_subgroups.iteritems():  # loop through the columns
+                    self.origin_data['subgroup_names'].append(columnName)
+                    self.origin_data['subgroups_data'][columnName] = []
+                    for pop in columnData.to_list():
+                        if not pop or math.isnan(pop):
+                            self.origin_data['subgroups_data'][columnName].append(col_PopSubGroupsDefaults[idx] / 100)
+                        else:
+                            self.origin_data['subgroups_data'][columnName].append(pop)
+
+                    idx += 1
+
+                    self.origin_data['subgroups_pop'][columnName] = [(a * b / 100.0) for a, b in zip(self.origin_data['subgroups_data'][columnName],pop_data)]
+                    subgroups_total = subgroups_total + sum(self.origin_data['subgroups_pop'][columnName])
+
+                mob_subgroups = csvData.iloc[:, min(col_MobSubGroupsCols) - 1:max(col_MobSubGroupsCols)]
+
+                # read in the mobility data (by age band)
+                self.origin_data['subgroups_mob'] = {}
+
+                idx = 0   # which mob subgroup this is
+                for (columnName, columnData) in mob_subgroups.iteritems():  # loop through the columns
+                    self.origin_data['subgroups_mob'][columnName] = []
+                    for mob in columnData.to_list():  # loop through mobility data groups, apply default value
+                        if not mob or math.isnan(mob):
+                            self.origin_data['subgroups_mob'][columnName].append(col_MobSubGroupsDefaults[idx])
+                        else:
+                            self.origin_data['subgroups_mob'][columnName].append(mob)
+                    idx += 1
+
+                # read in the local dispersion data
+
+                self.origin_data['LD'] = []
+                for val in csvData.iloc[:, col_LD - 1].to_list():
+                    if not val or math.isnan(val):
+                        self.origin_data['LD'].append(col_LDdefault)
+                    else:
+                        self.origin_data['LD'].append(val)
+
+                logging.info('  Origin Eastings  (.projParams.origin_data[eastings]):  ' + str(
+                    self.origin_data['eastings'][0:5]) + ' ... Count: ' + str(len(self.origin_data['eastings'])))
+                logging.info('  Origin Northings (.projParams.origin_data[northings]): ' + str(
+                    self.origin_data['northings'][0:5]) + ' ... Count: ' + str(len(self.origin_data['northings'])))
+                # logging.info('  Out of Study Area range origins: ' + str(out_of_range))
+
+                self.origin_eastings_min = min(self.origin_data['eastings'])
+                self.origin_eastings_max = max(self.origin_data['eastings'])
+                self.origin_northings_min = min(self.origin_data['northings'])
+                self.origin_northings_max = max(self.origin_data['northings'])
 
                 logging.info('  BL Origin point  (.projParams.origin_eastings_min / northings_min): ' + str(
                     self.origin_eastings_min) + ', ' + str(self.origin_northings_min))
@@ -222,61 +324,34 @@ class ProjectParams:
 
                 # calculate Cell X and Y references for each origin
                 csize = self.background_csize
-                self.origin_XY = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
+                self.origin_data['XY'] = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
 
-                for origin in range(0, len(self.origin_eastings)):
-                    orig_E = self.origin_eastings[origin]
-                    orig_N = self.origin_northings[origin]
+                for origin in range(0, len(self.origin_data['eastings'])):
+                    orig_E = self.origin_data['eastings'][origin]
+                    orig_N = self.origin_data['northings'][origin]
                     orig_X = round((orig_E - self.background_bl_east) / csize)
                     orig_Y = round((orig_N - self.background_bl_north) / csize)
-                    self.origin_XY.append((orig_X, orig_Y))
+                    self.origin_data['XY'].append((orig_X, orig_Y))
 
-                logging.info('  Origin X,Y indexes (.projParams.origin_XY): '
-                             + str(self.origin_XY[0:5]) + ' ... Count: ' + str(len(self.origin_XY)))
+                logging.info('  Origin X,Y indexes (.projParams.origin_data[XY]): '
+                             + str(self.origin_data['XY'][0:5]) + ' ... Count: ' + str(len(self.origin_data['XY'])))
 
-                # get the total population data
-                pop_data = originData.iloc[:, 4]
-                self.origin_pop_name = pop_data.name
-                self.origin_pop_data = pop_data.to_list()
+                logging.info('  Origin Population name (.projParams.origin_data[pop_name]): ' + self.origin_data['pop_name'])
+                logging.info('  Origin Population data (.projParams.origin_data[pop_data]): '
+                             + str(self.origin_data['pop_data'][0:5]) + ' ... Count: ' + str(len(self.origin_data['pop_data']))
+                             + ' Total: ' + str(sum(self.origin_data['pop_data'])))
 
-                logging.info('  Origin Population name (.projParams.origin_pop_name): ' + self.origin_pop_name)
-                logging.info('  Origin Population data (.projParams.origin_pop_data): '
-                             + str(self.origin_pop_data[0:5]) + ' ... Count: ' + str(len(self.origin_pop_data))
-                             + ' Total: ' + str(sum(self.origin_pop_data)))
+                logging.info('  Origin Population subgroups (.projParams.origin_data[subgroup_names]): '
+                             + str(self.origin_data['subgroup_names']))
+                
+                logging.info('  Origin Population first subgroup data (.projParams.origin_data[subgroups_data]): '
+                             + str(self.origin_data['subgroups_data'][self.origin_data['subgroup_names'][0]][0:5])
+                             + ' ... Count: ' + str(len(self.origin_data['subgroups_data'][self.origin_data['subgroup_names'][0]])))
 
-                # get the age breakdown data, add names to a list and data arrays to a dictionary
-                #   we may well want to use a different (more efficient) structure here
-
-                self.origin_subgroup_names = []
-                self.origin_subgroups_data = {}  # we may not need to store these eventually
-                self.origin_subgroups_pop = {}  # matching dictionary for actual populations
-                subgroups_total = 0
-
-                for (columnName, columnData) in originData.iloc[:, 5:].iteritems():  # loop through the columns
-                    logging.debug('Origin Group Data: ' + columnName + ' '
-                                  + str(len(columnData)) + '\n' + str(columnData[0:4]))
-
-                    # if there's a number in the first row we'll consider it as valid
-                    if str(columnData.values[0]) != 'nan':
-                        self.origin_subgroup_names.append(columnName)
-                        self.origin_subgroups_data[columnName] = columnData.to_list()
-
-                        # calculate subgroup population (total pop * percent / 100 rounded to int)
-                        self.origin_subgroups_pop[columnName] = [(a * b / 100.0) for a, b in
-                                                                 zip(self.origin_subgroups_data[columnName],
-                                                                     self.origin_pop_data)]
-                        subgroups_total = subgroups_total + sum(self.origin_subgroups_pop[columnName])
-
-                logging.info('  Origin Population subgroups (.projParams.origin_subgroup_names): '
-                             + str(self.origin_subgroup_names))
-                logging.info('  Origin Population first subgroup data (.projParams.origin_subgroups_data): '
-                             + str(self.origin_subgroups_data[self.origin_subgroup_names[0]][0:5])
-                             + ' ... Count: ' + str(len(self.origin_subgroups_data[self.origin_subgroup_names[0]])))
-
-                logging.info('  Origin Population first subgroup pops (.projParams.origin_subgroups_pop): '
-                             + str(self.origin_subgroups_pop[self.origin_subgroup_names[0]][0:5])
-                             + ' ... Count: ' + str(len(self.origin_subgroups_pop[self.origin_subgroup_names[0]]))
-                             + ' Total: ' + str(sum(self.origin_subgroups_pop[self.origin_subgroup_names[0]])))
+                logging.info('  Origin Population first subgroup pops (.projParams.origin_data[subgroups_pop]): '
+                             + str(self.origin_data['subgroups_pop'][self.origin_data['subgroup_names'][0]][0:5])
+                             + ' ... Count: ' + str(len(self.origin_data['subgroups_pop'][self.origin_data['subgroup_names'][0]]))
+                             + ' Total: ' + str(sum(self.origin_data['subgroups_pop'][self.origin_data['subgroup_names'][0]])))
 
                 logging.info('  Origin Population all subgroups pops total: ' + str(round(subgroups_total, 2)))
 
@@ -298,34 +373,57 @@ class ProjectParams:
 
                     dest_data = {}  # empty dictionary to hold destination data
 
-                    dest_header = pd.read_csv(filename, index_col=False, header=None, nrows=23)
+                    header = pd.read_csv(filename, index_col=False, header=None, nrows=23)
 
-                    dest_data['time_profile'] = dest_header.iloc[10, 1].upper()  # UPPER to always match timeseries
+                    # identify locations of various data columns and their defaults
+                    col_ID = int(header.iloc[4, 1])
+                    col_E = int(header.iloc[5, 1])
+                    col_N = int(header.iloc[6, 1])
+                    col_Pop = int(header.iloc[7, 1])
+                    col_PopSubGroups = int(header.iloc[8, 1])
 
-                    logging.info('    Time profile: ' + dest_data['time_profile'])
+                    lst = header.iloc[9, 1:col_PopSubGroups + 1].to_list()
+                    col_PopSubGroupsDefaults = [int(elem) for elem in lst]
+
+                    lst = header.iloc[9, col_PopSubGroups + 1:2 * col_PopSubGroups + 1].to_list()
+                    col_PopSubGroupsCols = [int(elem) for elem in lst]
+
+                    col_TimeProfile = int(header.iloc[10, 2])
+                    col_TimeProfileDefault = header.iloc[10, 1].upper()  # UPPER to always match timeseries
+
+                    col_LD = int(header.iloc[12, 2])
+                    col_LDdefault = int(header.iloc[12, 1])
+
+                    col_WAD = int(header.iloc[13, 2])
+                    col_WADdefault = header.iloc[13, 1]
+
+                    lst = header.iloc[14, 1:col_PopSubGroups + 1].to_list()
+                    col_MajorFlowCols = [int(elem) for elem in lst]
 
                     # create a Pandas dataframe and miss out the first 23 rows
-
                     dest_df = pd.read_csv(filename, header=[22])  # , index_col=False, header=None, skiprows=23)
 
-                    # just the eastings, northings and WAD for now.
-                    # dest_read = dest_df.iloc[:, [2,3,14]]
+                    # filter the data to within the Study area
+                    # TODO: use column numbers instead of names here
+                    bbquery = 'OSEAST >= {} & OSEAST <= {} & OSNRTH >= {} & OSNRTH <= {}'.format(
+                        self.sarea_bl_east, self.sarea_tr_east, self.sarea_bl_north, self.sarea_tr_north)
+                    csvData = dest_df.query(bbquery)
 
-                    logging.info('    Rows: ' + str(len(dest_df)))
-                    total_rows = total_rows + len(dest_df)
+                    logging.info('    Rows within Study Area: ' + str(len(csvData)))
+                    total_rows = total_rows + len(csvData)
 
-                    dest_data['OA'] = dest_df.iloc[:, 0].to_list()
-                    dest_data['eastings'] = dest_df.iloc[:, 2].to_list()
-                    dest_data['northings'] = dest_df.iloc[:, 3].to_list()
+                    dest_data['ID'] = csvData.iloc[:, col_ID - 1].to_list()
 
-                    logging.info('    OAs: ' + str(dest_data['OA'][0:5]))
+                    dest_data['eastings'] = [round(elem) for elem in csvData.iloc[:, col_E - 1].to_list()]
+                    dest_data['northings'] = [round(elem) for elem in csvData.iloc[:, col_N - 1].to_list()]
+
+                    logging.info('    IDs: ' + str(dest_data['ID'][0:5]))
                     logging.info('    Eastings: ' + str(dest_data['eastings'][0:5]))
                     logging.info('    Northings: ' + str(dest_data['northings'][0:5]))
 
                     # calculate Cell X and Y references for each destination
                     csize = self.background_csize
-                    dest_data[
-                        'XY'] = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
+                    dest_data['XY'] = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
 
                     for dest in range(0, len(dest_data['eastings'])):
                         dest_E = dest_data['eastings'][dest]
@@ -337,24 +435,19 @@ class ProjectParams:
                     logging.info('    X,Y indexes: '
                                  + str(dest_data['XY'][0:5]) + ' ... Count: ' + str(len(dest_data['XY'])))
 
-                    pop_column = int(dest_header.iloc[7, 1]) - 1
-
-                    pop_data = dest_df.iloc[:, pop_column]
+                    # get the total population data
+                    pop_data = csvData.iloc[:, col_Pop - 1]
+                    dest_data['pop_data'] = pop_data.to_list()
+                    # dest_data['pop_data'] = list(map(round, dest_data['pop_data_orig']))
                     dest_data['pop_name'] = pop_data.name
-                    dest_data['pop_data_orig'] = pop_data.to_list()
-                    dest_data['pop_data'] = list(map(round, dest_data['pop_data_orig']))
 
                     logging.info('    Pop name: ' + dest_data['pop_name'])
-                    logging.info('    Pop data orig: ' + str(dest_data['pop_data_orig'][0:5])
-                                 + ' Total: ' + str(sum(dest_data['pop_data'])))
-                    logging.info('    Pop data (rounded): ' + str(dest_data['pop_data'][0:5])
-                                 + ' Total: ' + str(sum(dest_data['pop_data'])))
+                    logging.info('    Pop data: ' + str(dest_data['pop_data'][0:5])
+                                 + '... Total: ' + str(sum(dest_data['pop_data'])))
+                    #logging.info('    Pop data (rounded): ' + str(dest_data['pop_data'][0:5])
+                    #             + ' Total: ' + str(sum(dest_data['pop_data'])))
 
-                    pop_subgroups_count = int(dest_header.iloc[8, 1])
-
-                    sg_start = pop_column + 1
-                    sg_end = sg_start + pop_subgroups_count
-                    pop_subgroups = dest_df.iloc[:, sg_start:sg_end]
+                    pop_subgroups = csvData.iloc[:, min(col_PopSubGroupsCols) - 1:max(col_PopSubGroupsCols)]
 
                     # get the age breakdown data, add names to a list and data arrays to a dictionary
                     #   we may well want to use a different (more efficient) structure here
@@ -364,20 +457,22 @@ class ProjectParams:
                     dest_data['subgroups_pop'] = {}  # matching dictionary for actual populations
                     subgroups_total = 0
 
+                    idx = 0  # which population data subgroup this is
                     for (columnName, columnData) in pop_subgroups.iteritems():  # loop through the columns
-                        logging.debug('Destination Group Data: ' + columnName + ' '
-                                      + str(len(columnData)) + '\n' + str(columnData[0:4]))
+                        dest_data['subgroup_names'].append(columnName)
+                        dest_data['subgroups_data'][columnName] = []
+                        for pop in columnData.to_list():
+                            if not pop or math.isnan(pop):
+                                dest_data['subgroups_data'][columnName].append(
+                                    col_PopSubGroupsDefaults[idx] / 100)
+                            else:
+                                dest_data['subgroups_data'][columnName].append(pop)
 
-                        # if there's a number in the first row we'll consider it as valid
-                        if str(columnData.values[0]) != 'nan':
-                            dest_data['subgroup_names'].append(columnName)
-                            dest_data['subgroups_data'][columnName] = columnData.to_list()
+                        idx += 1
 
-                            # calculate subgroup population (total pop * percent / 100 rounded to int)
-                            dest_data['subgroups_pop'][columnName] = [(a * b / 100.0) for a, b in
-                                                                      zip(dest_data['subgroups_data'][columnName],
-                                                                          dest_data['pop_data'])]
-                            subgroups_total = subgroups_total + sum(dest_data['subgroups_pop'][columnName])
+                        dest_data['subgroups_pop'][columnName] = [(a * b / 100.0) for a, b in zip(
+                            dest_data['subgroups_data'][columnName], pop_data)]
+                        subgroups_total = subgroups_total + sum(dest_data['subgroups_pop'][columnName])
 
                     logging.info('    Population subgroups: ' + str(dest_data['subgroup_names']))
                     logging.info('    Population first subgroup data: '
@@ -390,7 +485,34 @@ class ProjectParams:
                                  + ' Total: ' + str(sum(dest_data['subgroups_pop'][dest_data['subgroup_names'][0]])))
                     logging.info('    Dest file Population all subgroups pops total: ' + str(round(subgroups_total, 2)))
 
-                    wads = dest_df.iloc[:, 14].str.split('|')
+
+                    # read in the time profile data
+
+                    dest_data['time_profiles'] = []
+                    for val in csvData.iloc[:, col_TimeProfile - 1].to_list():
+                        if not val or str(val) == 'nan':
+                            dest_data['time_profiles'].append(col_TimeProfileDefault)
+                        else:
+                            dest_data['time_profiles'].append(val)
+
+                    # read in the local dispersion data
+
+                    dest_data['LD'] = []
+                    for val in csvData.iloc[:, col_LD - 1].to_list():
+                        if not val or math.isnan(val):
+                            dest_data['LD'].append(col_LDdefault)
+                        else:
+                            dest_data['LD'].append(val)
+
+                    # read in the WAD data
+                    wads = []
+                    wad_default = col_WADdefault.split('|')
+                    for val in csvData.iloc[:, col_WAD - 1].to_list():
+                        if not val:
+                            wads.append(wad_default)
+                        else:
+                            wads.append(val.split('|'))
+
                     dest_data['WAD'] = self.covertWADs(wads)
 
                     logging.info('    WADs: ' + str(dest_data['WAD'][0:5]))
@@ -413,7 +535,8 @@ class ProjectParams:
 
     def covertWADs(self, wad_list):
         # take a list of WADs as strings, return a new list of lists of tuples (now lists, so we can add to them):
-        # [  [ [radius, percent], ... ], [ ... ] ... ]
+        # amount and list are appended to hold totals and indexes of origins, background cells, etc. later
+        # [  [ [radius, percent, amount, list], ... ], [ ... ] ... ]
 
         # get rid of the pipe separator
         # dest_df_wad = wad_list.str.split('|')
@@ -434,7 +557,7 @@ class ProjectParams:
                     perc = int(wad_pairs)
                     radius = 0  # set the radius to zero if not specified
 
-                wad_pair = [radius, perc]  # NOT a tuple, use array so we can append to it later
+                wad_pair = [ radius, perc, 0, [] ]  # NOT a tuple, use array so we can append to it later
                 wad_pairs_list.append(wad_pair)
 
             dest_wad.append(wad_pairs_list)
