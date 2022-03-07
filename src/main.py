@@ -35,15 +35,16 @@ def main():
         # Project parameters can be loaded from a Dictionary or (VB compatible) file
 
         # Load Project parameters from a dictionary
-        """
+
         proj_dict = {
             'analysisarray': [373000,160000,40,40,200],
             'buffer': 8000,
-            'background': 'rastp1_monfri_00_06_2011.txt',
+            'background': 'rastp6_monfri_10_16_2011.txt',
             'timeseries': 'TimeSeries.xls',
             'origin': 'Origin_Eng_OTT_2011.csv',
             'destarray': ['Dest_Eng_Accom_OTT_2011.csv',
                           'Dest_Eng_Agri+Fish_OTT_2011.csv',
+                          'Dest_Eng_Education_UniPGR_OTT_2011.csv',
                           'Dest_Eng_Healthcare_OTT_2011.csv',
                           'Dest_Eng_Mine+Transp_OTT_2011.csv',
                           'Dest_Eng_Public+Office_OTT_2011.csv',
@@ -52,11 +53,10 @@ def main():
         }
 
         sb.loadProjectParamsFromDict(proj_dict)
-        """
 
         # Load Project parameters from a file
 
-        sb.loadProjectParamsFromFile('SessionParas/Bath_2011_0200_OTT_Paras.txt')
+        # sb.loadProjectParamsFromFile('SessionParas/Bath_2011_0200_OTT_Paras.txt')
 
         # Calculate the Analysis area and Study area coords
 
@@ -85,7 +85,7 @@ def main():
         # Everything is now loaded, run the model with some sample values
 
         try:
-            ageband = '18_64'
+            ageband = '18_64'  # OV65
             run_date = datetime.date(2020, 2, 25)  # currently not used
             run_time = datetime.time(9, 40, 0)
 

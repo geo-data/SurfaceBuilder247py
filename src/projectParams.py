@@ -245,7 +245,7 @@ class ProjectParams:
 
                 # create a Pandas dataframe and miss out the specified header
 
-                origin_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows)
+                origin_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False)
 
                 # filter the data to within the Study area
                 name_E = origin_df.columns.values[col_E-1]    # Easting column name
@@ -303,17 +303,17 @@ class ProjectParams:
                     ageband = columnName.replace('Mob_', '')
                     self.origin_data['subgroups_mob'][ageband] = []
                     for mob in columnData.to_list():  # loop through mobility data groups, apply default value
-                        if not mob or math.isnan(mob):
+                        if not self.is_number(mob):
                             self.origin_data['subgroups_mob'][ageband].append(def_MobSubGroups[idx])
                         else:
-                            self.origin_data['subgroups_mob'][ageband].append((100 - mob) / 100)  # % immobile
+                            self.origin_data['subgroups_mob'][ageband].append((100 - int(mob)) / 100)  # % immobile
                     idx += 1
 
                 # read in the local dispersion data
 
                 self.origin_data['LD'] = []
                 for val in csvData.iloc[:, col_LD - 1].to_list():
-                    if not val or math.isnan(val):
+                    if not self.is_number(val):
                         self.origin_data['LD'].append(def_LD)
                     else:
                         self.origin_data['LD'].append(val)
@@ -413,12 +413,15 @@ class ProjectParams:
                     col_WAD = int(header.iloc[13, 2])  # WAD col
                     def_WAD = header.iloc[13, 1]  # Default WAD
 
-                    lst = header.iloc[14, 1:col_PopSubGroups + 1].to_list()
-                    col_MajorFlowCols = [int(elem) for elem in lst]  # Major Flows col
+                    lst = header.iloc[14, 1:].to_list()  # Major Flows columns
+                    col_MajorFlowCols = []
+                    for elem in lst:
+                        if elem and str(elem) != 'nan':
+                            col_MajorFlowCols.append(int(elem))
 
                     # create a Pandas dataframe and miss out the specified header
 
-                    dest_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows)
+                    dest_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False)
 
                     # filter the data to within the Study area
                     name_E = dest_df.columns.values[col_E-1]    # Easting column name
@@ -533,13 +536,33 @@ class ProjectParams:
                         else:
                             wads.append(val.split('|'))
 
-                    dest_data['WAD'] = self.covertWADs(wads)
+                    dest_data['WAD'] = self.convertWADs(wads)
 
                     logging.info('    WADs: ' + str(dest_data['WAD'][0:5]))
                     logging.info('      First tuple/radius/percent: '
                                  + str(dest_data['WAD'][0][0]) + ' '
                                  + str(dest_data['WAD'][0][0][0]) + ' '
                                  + str(dest_data['WAD'][0][0][1]))
+
+                    # read in the Major Flows data
+                    major_flows = csvData.iloc[:, min(col_MajorFlowCols) - 1:max(col_MajorFlowCols)]
+
+                    # read in each major flow column, add to major_flows dictionary
+                    #   if none provided, we could leave out of the dictionary entirely?
+                    dest_data['major_flows'] = {}
+                    for (columnName, columnData) in major_flows.iteritems():  # loop through the columns
+                        dest_data['major_flows'][columnName] = []
+                        mf_count = 0
+                        for elem in columnData.to_list():
+                            if elem and str(elem) != 'nan':
+                                dest_data['major_flows'][columnName].append(self.convertMajorFlows(elem))
+                                mf_count += 1
+                            else:
+                                dest_data['major_flows'][columnName].append(None)
+                                #dest_data['major_flows'][columnName].append(self.convertMajorFlows('00MSNE>5|00MSMY>5|00MSNA>2'))
+                        if mf_count > 0:
+                            logging.info('    Major flow {} with {} values'.format(columnName, mf_count))
+
 
                     # append to the destination array
                     self.destination_data.append(dest_data)
@@ -553,7 +576,7 @@ class ProjectParams:
         # go across to numpy array at this point? 
         # dest_array = np.column_stack([dest_east, dest_north, dest_wad])
 
-    def covertWADs(self, wad_list):
+    def convertWADs(self, wad_list):
         # take a list of WADs as strings, return a new list of lists of tuples (now lists, so we can add to them):
         # amount and list are appended to hold totals and indexes of origins, background cells, etc. later
         # [  [ [radius, percent, amount, list], ... ], [ ... ] ... ]
@@ -583,3 +606,34 @@ class ProjectParams:
             dest_wad.append(wad_pairs_list)
 
         return dest_wad
+
+    def convertMajorFlows(self, mfstr):
+        # take a list of Major Flows (mfstr) as a string, return a list
+        # amount and list are appended to hold totals and indexes of origins, background cells, etc. later
+        # [  [ [IDcode, percent, amount, list], ... ], [ ... ] ... ]
+        # Note we are working with a single mf list, not the whole lot of them as per WADs
+
+        # Empty list of all WADs for ALL destinations
+        mf_list = []
+
+        for mf_pair in mfstr.split('|'):  # each mf
+
+            if '>' in mf_pair:
+                pair = list(mf_pair.split('>'))
+                idcode = pair[0]
+                perc = int(pair[1])
+                mf_item = [idcode, perc, 0, []]  # NOT a tuple, use array so we can append to it later
+                mf_list.append(mf_item)
+
+        return mf_list
+
+    def is_number(self, s):
+        # Returns True is string is a number
+        try:
+            f = float(s)
+            if math.isnan(f):
+                return False
+            else:
+                return True
+        except ValueError:
+            return False

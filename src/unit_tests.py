@@ -26,7 +26,24 @@ class MyTestCases(unittest.TestCase):
 
         print("test_1_proj_params_file_function: read in values")
 
-        sb.loadProjectParamsFromFile('SessionParas/Bath_2011_0200_OTT_Paras.txt')
+        # sb.loadProjectParamsFromFile('SessionParas/Bath_2011_0200_OTT_Paras.txt')
+        proj_dict = {
+            'analysisarray': [373000,160000,40,40,200],
+            'buffer': 8000,
+            'background': 'rastp1_monfri_00_06_2011.txt',
+            'timeseries': 'TimeSeries.xls',
+            'origin': 'Origin_Eng_OTT_2011.csv',
+            'destarray': ['Dest_Eng_Accom_OTT_2011.csv',
+                          'Dest_Eng_Agri+Fish_OTT_2011.csv',
+                          'Dest_Eng_Education_UniPGR_OTT_2011.csv',
+                          'Dest_Eng_Healthcare_OTT_2011.csv',
+                          'Dest_Eng_Mine+Transp_OTT_2011.csv',
+                          'Dest_Eng_Public+Office_OTT_2011.csv',
+                          'Dest_Eng_Retail+Arts_OTT_2011.csv',
+                          'Dest_Eng_Service_OTT_2011.csv']
+        }
+
+        sb.loadProjectParamsFromDict(proj_dict)
 
         msg = pre + 'Analysis Array contains expected values' + post
         assert sb.projParams.analysisarray == [373000, 160000, 40, 40, 200], msg
@@ -79,11 +96,11 @@ class MyTestCases(unittest.TestCase):
 
         # We can just check calculated values, which will be wrong if anything else is!
 
-        msg = pre + 'Background file TR Easting = 394000' + post
-        assert sb.projParams.background_tr_east == 394000, msg
+        msg = pre + 'Background file TR Easting = 700000' + post
+        assert sb.projParams.background_tr_east == 700000, msg
 
-        msg = pre + 'Background file TR Northing = 181000' + post
-        assert sb.projParams.background_tr_north == 181000, msg
+        msg = pre + 'Background file TR Northing = 700000' + post
+        assert sb.projParams.background_tr_north == 700000, msg
 
     def test_4_origin_file(self):
         # Check values from the origin file
