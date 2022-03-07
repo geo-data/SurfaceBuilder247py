@@ -139,7 +139,11 @@ class ProjectParams:
                     bg_histogram[val] = 1
                 else:
                     bg_histogram[val] += 1
-                if val > 0.001:  # threshold for inclusion
+
+                # threshold for inclusion in list of relevant grid cells
+                #   if we use 0 this list is potentially huges
+                #   if, alternatively, we use 0.0001, much quicker and v v v slightly less accurate.
+                if val > 0:
                     bg_E = self.background_bl_east + self.background_csize * X + cellcentre
                     bg_N = self.background_bl_north + self.background_csize * Y + cellcentre
                     if bg_E >= self.sarea_bl_east and bg_E <= self.sarea_tr_east \
@@ -215,35 +219,41 @@ class ProjectParams:
                 header = pd.read_csv(filename, index_col=False, header=None, nrows=23)
 
                 # identify locations of various data columns and their defaults
-                col_ID = int(header.iloc[4, 1])
-                col_E = int(header.iloc[5, 1])
-                col_N = int(header.iloc[6, 1])
-                col_Pop = int(header.iloc[7, 1])
-                col_PopSubGroups = int(header.iloc[8, 1])
+                col_DataStart = int(header.iloc[3, 1])  # Start row of data
+                col_DataRows = int(header.iloc[3, 3])   # Total number of data rows
 
-                lst = header.iloc[9, 1:col_PopSubGroups+1].to_list()
-                col_PopSubGroupsDefaults = [int(elem) for elem in lst]
+                col_ID = int(header.iloc[4, 1])   # Unique ID
+                col_E = int(header.iloc[5, 1])    # Easting
+                col_N = int(header.iloc[6, 1])    # Northing
+                col_Pop = int(header.iloc[7, 1])  # Population
+                col_PopSubGroups = int(header.iloc[8, 1])  # Population subgroups count
 
-                lst = header.iloc[9, col_PopSubGroups + 1:2*col_PopSubGroups+1].to_list()
+                lst = header.iloc[9, 1:col_PopSubGroups+1].to_list()  # Default subgroup population percentages
+                def_PopSubGroups = [int(elem) for elem in lst]
+
+                lst = header.iloc[9, col_PopSubGroups + 1:2*col_PopSubGroups+1].to_list()  # Population subgroup cols
                 col_PopSubGroupsCols = [int(elem) for elem in lst]
 
-                lst = header.iloc[16, 1:col_PopSubGroups+1].to_list()
-                col_MobSubGroupsDefaults = [int(elem) for elem in lst]
+                lst = header.iloc[16, 1:col_PopSubGroups+1].to_list()  # Default mobility values
+                def_MobSubGroups = [((100 - float(elem)) / 100) for elem in lst]
 
-                lst = header.iloc[16, col_PopSubGroups + 1:2*col_PopSubGroups+1].to_list()
+                lst = header.iloc[16, col_PopSubGroups + 1:2*col_PopSubGroups+1].to_list()  # Mobility subgroup cols
                 col_MobSubGroupsCols = [int(elem) for elem in lst]
 
-                col_LD = int(header.iloc[12, 2])
-                col_LDdefault = int(header.iloc[12, 1])
+                col_LD = int(header.iloc[12, 2])  # Local dispersion col
+                def_LD = int(header.iloc[12, 1])  # Local dispersion default
 
-                # create a Pandas dataframe and miss out the first 23 rows
-                # header information is on row 23, so start here
-                origin_df = pd.read_csv(filename, header=[22])
+                # create a Pandas dataframe and miss out the specified header
+
+                origin_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows)
 
                 # filter the data to within the Study area
-                # TODO: use column numbers instead of names here
-                bbquery = 'OSEAST >= {} & OSEAST <= {} & OSNRTH >= {} & OSNRTH <= {}'.format(
-                    self.sarea_bl_east, self.sarea_tr_east, self.sarea_bl_north, self.sarea_tr_north)
+                name_E = origin_df.columns.values[col_E-1]    # Easting column name
+                name_N = origin_df.columns.values[col_N - 1]  # Northing column name
+                bbquery = '{} >= {} & {} <= {} & {} >= {} & {} <= {}'.format(
+                    name_E, self.sarea_bl_east, name_E, self.sarea_tr_east,
+                    name_N, self.sarea_bl_north, name_N, self.sarea_tr_north)
+
                 csvData = origin_df.query(bbquery)
 
                 # all origin data to be stored inside origins dictionary
@@ -273,7 +283,7 @@ class ProjectParams:
                     self.origin_data['subgroups_data'][columnName] = []
                     for pop in columnData.to_list():
                         if not pop or math.isnan(pop):
-                            self.origin_data['subgroups_data'][columnName].append(col_PopSubGroupsDefaults[idx] / 100)
+                            self.origin_data['subgroups_data'][columnName].append(def_PopSubGroups[idx] / 100)
                         else:
                             self.origin_data['subgroups_data'][columnName].append(pop)
 
@@ -289,12 +299,14 @@ class ProjectParams:
 
                 idx = 0   # which mob subgroup this is
                 for (columnName, columnData) in mob_subgroups.iteritems():  # loop through the columns
-                    self.origin_data['subgroups_mob'][columnName] = []
+                    # match the pop ageband array name, perhaps we should forcefully use the same index ageband name?
+                    ageband = columnName.replace('Mob_', '')
+                    self.origin_data['subgroups_mob'][ageband] = []
                     for mob in columnData.to_list():  # loop through mobility data groups, apply default value
                         if not mob or math.isnan(mob):
-                            self.origin_data['subgroups_mob'][columnName].append(col_MobSubGroupsDefaults[idx])
+                            self.origin_data['subgroups_mob'][ageband].append(def_MobSubGroups[idx])
                         else:
-                            self.origin_data['subgroups_mob'][columnName].append(mob)
+                            self.origin_data['subgroups_mob'][ageband].append((100 - mob) / 100)  # % immobile
                     idx += 1
 
                 # read in the local dispersion data
@@ -302,7 +314,7 @@ class ProjectParams:
                 self.origin_data['LD'] = []
                 for val in csvData.iloc[:, col_LD - 1].to_list():
                     if not val or math.isnan(val):
-                        self.origin_data['LD'].append(col_LDdefault)
+                        self.origin_data['LD'].append(def_LD)
                     else:
                         self.origin_data['LD'].append(val)
 
@@ -372,41 +384,49 @@ class ProjectParams:
                 with open(filename, 'r') as file_opened:  # currently unused, but checks existence!
 
                     dest_data = {}  # empty dictionary to hold destination data
+                    dest_data['Filename'] = dest_file
 
                     header = pd.read_csv(filename, index_col=False, header=None, nrows=23)
 
                     # identify locations of various data columns and their defaults
-                    col_ID = int(header.iloc[4, 1])
-                    col_E = int(header.iloc[5, 1])
-                    col_N = int(header.iloc[6, 1])
-                    col_Pop = int(header.iloc[7, 1])
-                    col_PopSubGroups = int(header.iloc[8, 1])
+                    col_DataStart = int(header.iloc[3, 1])  # Start row of data
+                    col_DataRows = int(header.iloc[3, 3])   # Total number of data rows
 
-                    lst = header.iloc[9, 1:col_PopSubGroups + 1].to_list()
-                    col_PopSubGroupsDefaults = [int(elem) for elem in lst]
+                    col_ID = int(header.iloc[4, 1])   # Unique ID
+                    col_E = int(header.iloc[5, 1])    # Easting
+                    col_N = int(header.iloc[6, 1])    # Northing
+                    col_Pop = int(header.iloc[7, 1])  # Population
+                    col_PopSubGroups = int(header.iloc[8, 1])  # Population subgroups count
 
-                    lst = header.iloc[9, col_PopSubGroups + 1:2 * col_PopSubGroups + 1].to_list()
+                    lst = header.iloc[9, 1:col_PopSubGroups + 1].to_list()  # Default subgroup population percentages
+                    def_PopSubGroups = [int(elem) for elem in lst]
+
+                    lst = header.iloc[9, col_PopSubGroups + 1:2 * col_PopSubGroups + 1].to_list()  # Pop subgroup cols
                     col_PopSubGroupsCols = [int(elem) for elem in lst]
 
-                    col_TimeProfile = int(header.iloc[10, 2])
-                    col_TimeProfileDefault = header.iloc[10, 1].upper()  # UPPER to always match timeseries
+                    col_TimeProfile = int(header.iloc[10, 2])  # Time profile column
+                    def_TimeProfile = header.iloc[10, 1].upper()  # Default (UPPER to always match timeseries)
 
-                    col_LD = int(header.iloc[12, 2])
-                    col_LDdefault = int(header.iloc[12, 1])
+                    col_LD = int(header.iloc[12, 2])  # Local dispersion col
+                    def_LD = int(header.iloc[12, 1])  # Default LD
 
-                    col_WAD = int(header.iloc[13, 2])
-                    col_WADdefault = header.iloc[13, 1]
+                    col_WAD = int(header.iloc[13, 2])  # WAD col
+                    def_WAD = header.iloc[13, 1]  # Default WAD
 
                     lst = header.iloc[14, 1:col_PopSubGroups + 1].to_list()
-                    col_MajorFlowCols = [int(elem) for elem in lst]
+                    col_MajorFlowCols = [int(elem) for elem in lst]  # Major Flows col
 
-                    # create a Pandas dataframe and miss out the first 23 rows
-                    dest_df = pd.read_csv(filename, header=[22])  # , index_col=False, header=None, skiprows=23)
+                    # create a Pandas dataframe and miss out the specified header
+
+                    dest_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows)
 
                     # filter the data to within the Study area
-                    # TODO: use column numbers instead of names here
-                    bbquery = 'OSEAST >= {} & OSEAST <= {} & OSNRTH >= {} & OSNRTH <= {}'.format(
-                        self.sarea_bl_east, self.sarea_tr_east, self.sarea_bl_north, self.sarea_tr_north)
+                    name_E = dest_df.columns.values[col_E-1]    # Easting column name
+                    name_N = dest_df.columns.values[col_N - 1]  # Northing column name
+                    bbquery = '{} >= {} & {} <= {} & {} >= {} & {} <= {}'.format(
+                        name_E, self.sarea_bl_east, name_E, self.sarea_tr_east,
+                        name_N, self.sarea_bl_north, name_N, self.sarea_tr_north)
+
                     csvData = dest_df.query(bbquery)
 
                     logging.info('    Rows within Study Area: ' + str(len(csvData)))
@@ -464,7 +484,7 @@ class ProjectParams:
                         for pop in columnData.to_list():
                             if not pop or math.isnan(pop):
                                 dest_data['subgroups_data'][columnName].append(
-                                    col_PopSubGroupsDefaults[idx] / 100)
+                                    def_PopSubGroups[idx] / 100)
                             else:
                                 dest_data['subgroups_data'][columnName].append(pop)
 
@@ -491,7 +511,7 @@ class ProjectParams:
                     dest_data['time_profiles'] = []
                     for val in csvData.iloc[:, col_TimeProfile - 1].to_list():
                         if not val or str(val) == 'nan':
-                            dest_data['time_profiles'].append(col_TimeProfileDefault)
+                            dest_data['time_profiles'].append(def_TimeProfile)
                         else:
                             dest_data['time_profiles'].append(val)
 
@@ -500,13 +520,13 @@ class ProjectParams:
                     dest_data['LD'] = []
                     for val in csvData.iloc[:, col_LD - 1].to_list():
                         if not val or math.isnan(val):
-                            dest_data['LD'].append(col_LDdefault)
+                            dest_data['LD'].append(def_LD)
                         else:
                             dest_data['LD'].append(val)
 
                     # read in the WAD data
                     wads = []
-                    wad_default = col_WADdefault.split('|')
+                    wad_default = def_WAD.split('|')
                     for val in csvData.iloc[:, col_WAD - 1].to_list():
                         if not val:
                             wads.append(wad_default)

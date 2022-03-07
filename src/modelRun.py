@@ -53,7 +53,15 @@ class ModelRun:
 
         # make a copy of the relevant origin populations
         self.originPopData = sb.projParams.origin_data['subgroups_pop'][self.ageband].copy()
-        #originPopData = np.array(sb.projParams.origin_data['subgroups_pop'][self.ageband])
+
+        # transfer immobile population
+        self.originPopDataImmob = []
+        for origin in range(0, len(self.originPopData)):
+            immob = self.originPopData[origin] * sb.projParams.origin_data['subgroups_mob'][self.ageband][origin]
+            self.originPopDataImmob.append(immob)
+            self.originPopData[origin] -= immob
+
+        logging.info(  '\n  Immobile population removed: {}'.format(round(sum(self.originPopDataImmob),3)) )
 
         originInitialPop = sum(self.originPopData)  # record initial total pop in this ageband
         destIncrease = 0  # (for checking) a record of how many dest pop transfers were made
@@ -66,7 +74,7 @@ class ModelRun:
 
         for destdata in sb.projParams.destination_data:
 
-            # grab the time profile for this collection
+            logging.info('\n  New destination collection (' + destdata['Filename'] + ') ...')
 
             current_time_profile = ''  # only recalculate the inTravel and onSite percentages when things change
 

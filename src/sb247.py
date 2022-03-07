@@ -77,6 +77,7 @@ class SB247:
         self.projParams.aarea_cols = int(self.projParams.analysisarray[3])
         self.projParams.aarea_csize = int(self.projParams.analysisarray[4])
 
+        logging.info('Analysis Area:')
         logging.info('  BL Easting  (.projParams.aarea_bl_east):  ' + str(self.projParams.aarea_bl_east))
         logging.info('  BL Northing (.projParams.aarea_bl_north): ' + str(self.projParams.aarea_bl_north))
         logging.info('  Rows        (.projParams.aarea_rows):     ' + str(self.projParams.aarea_rows))
@@ -91,6 +92,9 @@ class SB247:
 
         logging.info('  TR Easting  (.projParams.aarea_tr_east):  ' + str(self.projParams.aarea_tr_east))
         logging.info('  TR Northing (.projParams.aarea_tr_north): ' + str(self.projParams.aarea_tr_north))
+        logging.info('  Width: {}m  Height: {}m'.format(
+            self.projParams.aarea_tr_east-self.projParams.aarea_bl_east,
+            self.projParams.aarea_tr_north-self.projParams.aarea_bl_north))
 
         aarea_buffer = self.projParams.buffer
 
@@ -107,6 +111,9 @@ class SB247:
         logging.info('  BL Northing (.projParams.sarea_bl_north): ' + str(self.projParams.sarea_bl_north))
         logging.info('  TR Easting  (.projParams.sarea_tr_east):  ' + str(self.projParams.sarea_tr_east))
         logging.info('  TR Northing (.projParams.sarea_tr_north): ' + str(self.projParams.sarea_tr_north))
+        logging.info('  Width: {}m  Height: {}m'.format(
+            self.projParams.sarea_tr_east-self.projParams.sarea_bl_east,
+            self.projParams.sarea_tr_north-self.projParams.sarea_bl_north))
 
     def geometryChecks(self):
 
