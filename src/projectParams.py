@@ -303,20 +303,20 @@ class ProjectParams:
                     ageband = columnName.replace('Mob_', '')
                     self.origin_data['subgroups_mob'][ageband] = []
                     for mob in columnData.to_list():  # loop through mobility data groups, apply default value
-                        if not self.is_number(mob):
-                            self.origin_data['subgroups_mob'][ageband].append(def_MobSubGroups[idx])
+                        if self.is_number(mob):
+                            self.origin_data['subgroups_mob'][ageband].append((100 - int(mob)) / 100)
                         else:
-                            self.origin_data['subgroups_mob'][ageband].append((100 - int(mob)) / 100)  # % immobile
+                            self.origin_data['subgroups_mob'][ageband].append(def_MobSubGroups[idx])  # % immobile
                     idx += 1
 
                 # read in the local dispersion data
 
                 self.origin_data['LD'] = []
                 for val in csvData.iloc[:, col_LD - 1].to_list():
-                    if not self.is_number(val):
-                        self.origin_data['LD'].append(def_LD)
-                    else:
+                    if self.is_number(val):
                         self.origin_data['LD'].append(val)
+                    else:
+                        self.origin_data['LD'].append(def_LD)
 
                 logging.info('  Origin Eastings  (.projParams.origin_data[eastings]):  ' + str(
                     self.origin_data['eastings'][0:5]) + ' ... Count: ' + str(len(self.origin_data['eastings'])))
@@ -416,7 +416,7 @@ class ProjectParams:
                     lst = header.iloc[14, 1:].to_list()  # Major Flows columns
                     col_MajorFlowCols = []
                     for elem in lst:
-                        if elem and str(elem) != 'nan':
+                        if self.is_number(elem):
                             col_MajorFlowCols.append(int(elem))
 
                     # create a Pandas dataframe and miss out the specified header
@@ -485,11 +485,10 @@ class ProjectParams:
                         dest_data['subgroup_names'].append(columnName)
                         dest_data['subgroups_data'][columnName] = []
                         for pop in columnData.to_list():
-                            if not pop or math.isnan(pop):
-                                dest_data['subgroups_data'][columnName].append(
-                                    def_PopSubGroups[idx] / 100)
-                            else:
+                            if self.is_number(pop):
                                 dest_data['subgroups_data'][columnName].append(pop)
+                            else:
+                                dest_data['subgroups_data'][columnName].append(def_PopSubGroups[idx] / 100)
 
                         idx += 1
 
@@ -522,10 +521,10 @@ class ProjectParams:
 
                     dest_data['LD'] = []
                     for val in csvData.iloc[:, col_LD - 1].to_list():
-                        if not val or math.isnan(val):
-                            dest_data['LD'].append(def_LD)
-                        else:
+                        if self.is_number(val):
                             dest_data['LD'].append(val)
+                        else:
+                            dest_data['LD'].append(def_LD)
 
                     # read in the WAD data
                     wads = []
