@@ -126,10 +126,28 @@ class ProjectParams:
             logging.info('  Cols        (.projParams.background_cols):     ' + str(self.background_cols))
             logging.info('  Cellsize    (.projParams.background_csize):    ' + str(self.background_csize))
 
+            # Clip the background grid to the size of the Analysis Area, which is all we will need
+
+            start_x = int((self.aarea_bl_east - self.background_bl_east) / self.background_csize)
+            start_y = int((self.aarea_bl_north - self.background_bl_north) / self.background_csize)
+            end_x = int(start_x + (self.aarea_tr_east - self.aarea_bl_east) / self.background_csize)
+            end_y = int(start_y + (self.aarea_tr_north - self.aarea_bl_north) / self.background_csize)
+
+            self.background_array = self.background_array[start_y:end_y, start_x:end_x]
+
+            # update the background header dictionary for when this is saved
+            self.background_header['ncols'] = self.aarea_cols
+            self.background_header['nrows'] = self.aarea_rows
+            self.background_header['xllcorner'] = self.aarea_bl_east
+            self.background_header['yllcorner'] = self.aarea_bl_north
+            self.background_header['cellsize'] = self.aarea_csize
+
+            logging.info('  Background array clipped to the dimensions of Analysis Area')
+
             # populate a background values array with non-zero cells (and filter values to within study area)
             #   tuples of (x, y, easting, northing, value)
             self.background_values = []
-            cellcentre = round(self.background_csize / 2)
+            cellcentre = round(self.aarea_csize / 2)
             bg_histogram = {}
             out_of_range = 0
 
@@ -144,10 +162,10 @@ class ProjectParams:
                 #   if we use 0 this list is potentially huges
                 #   if, alternatively, we use 0.0001, much quicker and v v v slightly less accurate.
                 if val > 0:
-                    bg_E = self.background_bl_east + self.background_csize * X + cellcentre
-                    bg_N = self.background_bl_north + self.background_csize * Y + cellcentre
-                    if bg_E >= self.sarea_bl_east and bg_E <= self.sarea_tr_east \
-                            and bg_N >= self.sarea_bl_north and bg_N <= self.sarea_tr_north:
+                    bg_E = self.aarea_bl_east + self.aarea_csize * X + cellcentre
+                    bg_N = self.aarea_bl_north + self.aarea_csize * Y + cellcentre
+                    if bg_E >= self.aarea_bl_east and bg_E <= self.aarea_tr_east \
+                            and bg_N >= self.aarea_bl_north and bg_N <= self.aarea_tr_north:
                         self.background_values.append((X, Y, bg_E, bg_N, val))
                     else:
                         out_of_range += 1

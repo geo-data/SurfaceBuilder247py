@@ -317,7 +317,7 @@ class ModelRun:
         self.grid_origins = self.createGrid(rows, cols, sb.projParams.origin_data['XY'],self.originPopData)
 
         logging.info('\n   Destinations inTravel (.modelRun.grid_dest_inTravel)...')
-        self.grid_dest_inTravel = self.createGrid_inTravel(rows, cols, sb)
+        self.grid_dest_inTravel = self.createGrid_inTravel(sb)
 
         logging.info('\n   Destinations onSite   (.modelRun.grid_dest_onSite)...')
         #self.grid_dest_onSite = self.createGrid(rows, cols, self.dest_XY, self.dest_onSite)
@@ -377,7 +377,7 @@ class ModelRun:
 
         return grid
 
-    def createGrid_inTravel(self, rows, cols, sb):
+    def createGrid_inTravel(self, sb):
 
         # for each dest array in travel value
         #    for each wad (rad:pc)
@@ -387,6 +387,9 @@ class ModelRun:
         #       -> amount within this radius
         #            for each contained background cell
         #                add to same place in new grid dest pop * wad pc * background weighting /  total weighting
+
+        rows = sb.projParams.aarea_rows
+        cols = sb.projParams.aarea_cols
 
         grid = np.zeros((rows,cols))
 
