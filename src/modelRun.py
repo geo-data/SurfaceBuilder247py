@@ -368,7 +368,7 @@ class ModelRun:
             if Y > maxY:
                 maxY = Y
 
-            if X >= rows or Y >= cols:
+            if X >= cols or Y >= rows:
                 logging.info('     Ignoring out of bounds value at row '
                              + str(row) + ' ('+ str(X)+','+str(Y)+')')
             else:
@@ -388,8 +388,8 @@ class ModelRun:
         #            for each contained background cell
         #                add to same place in new grid dest pop * wad pc * background weighting /  total weighting
 
-        rows = sb.projParams.aarea_rows
-        cols = sb.projParams.aarea_cols
+        rows = sb.projParams.background_rows
+        cols = sb.projParams.background_cols
 
         grid = np.zeros((rows,cols))
 
@@ -449,7 +449,15 @@ class ModelRun:
                         Y = bgcell[1]
                         val = bgcell[4]
                         # add the share of the pop (dest * wad pc) to the relevant grid cell (grid amount / grid tot)
-                        grid[X,Y] += dest_pop * pc / 100 * val / bg_tot
+                        # Row - Y, Col - X
+
+                        if X >= cols or Y >= rows:
+                            logging.info('     Ignoring out of bounds value at row '
+                                         + str(loop_count) + ' (' + str(X) + ',' + str(Y) + ')')
+                        else:
+                            grid[Y, X] = val
+
+                        grid[Y,X] += dest_pop * pc / 100 * val / bg_tot
                         loop_count += 1
 
         logging.info('\n     created - Loop count: ' + str(loop_count)

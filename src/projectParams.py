@@ -126,23 +126,39 @@ class ProjectParams:
             logging.info('  Cols        (.projParams.background_cols):     ' + str(self.background_cols))
             logging.info('  Cellsize    (.projParams.background_csize):    ' + str(self.background_csize))
 
-            # Clip the background grid to the size of the Analysis Area, which is all we will need
+            # Clip the background grid to the size of the Study Area, which is all we will need
 
-            start_x = int((self.aarea_bl_east - self.background_bl_east) / self.background_csize)
-            start_y = int((self.aarea_bl_north - self.background_bl_north) / self.background_csize)
-            end_x = int(start_x + (self.aarea_tr_east - self.aarea_bl_east) / self.background_csize)
-            end_y = int(start_y + (self.aarea_tr_north - self.aarea_bl_north) / self.background_csize)
+            start_x = int((self.sarea_bl_east - self.background_bl_east) / self.background_csize)
+            start_y = int((self.sarea_bl_north - self.background_bl_north) / self.background_csize)
+            end_x = int(start_x + (self.sarea_tr_east - self.sarea_bl_east) / self.background_csize)
+            end_y = int(start_y + (self.sarea_tr_north - self.sarea_bl_north) / self.background_csize)
 
+            # NOTE a numpy array is rows of columns [rownum - Y][colnum - X]
             self.background_array = self.background_array[start_y:end_y, start_x:end_x]
 
-            # update the background header dictionary for when this is saved
-            self.background_header['ncols'] = self.aarea_cols
-            self.background_header['nrows'] = self.aarea_rows
-            self.background_header['xllcorner'] = self.aarea_bl_east
-            self.background_header['yllcorner'] = self.aarea_bl_north
+            # update the background header dictionary for when this is saved, and update the instance vars
+            self.background_header['ncols'] = end_x - start_x
+            self.background_header['nrows'] = end_y - start_y
+            self.background_header['xllcorner'] = self.sarea_bl_east
+            self.background_header['yllcorner'] = self.sarea_bl_north
             self.background_header['cellsize'] = self.aarea_csize
 
-            logging.info('  Background array clipped to the dimensions of Analysis Area')
+            self.background_bl_east = int(self.background_header['xllcorner'])
+            self.background_bl_north = int(self.background_header['yllcorner'])
+            self.background_rows = int(self.background_header['nrows'])
+            self.background_cols = int(self.background_header['ncols'])
+            self.background_csize = int(self.background_header['cellsize'])
+
+            logging.info('Background array clipped to the dimensions of Analysis Area')
+
+            logging.info('\nClipped Background Header:')
+            logging.info('  BL Easting  (.projParams.background_bl_east):  ' + str(self.background_bl_east))
+            logging.info('  BL Northing (.projParams.background_bl_north): ' + str(self.background_bl_north))
+            logging.info('  TR Easting  (.projParams.background_tr_east):  ' + str(self.background_tr_east))
+            logging.info('  TR Northing (.projParams.background_tr_north): ' + str(self.background_tr_north))
+            logging.info('  Rows        (.projParams.background_rows):     ' + str(self.background_rows))
+            logging.info('  Cols        (.projParams.background_cols):     ' + str(self.background_cols))
+            logging.info('  Cellsize    (.projParams.background_csize):    ' + str(self.background_csize))
 
             # populate a background values array with non-zero cells (and filter values to within study area)
             #   tuples of (x, y, easting, northing, value)
@@ -151,21 +167,22 @@ class ProjectParams:
             bg_histogram = {}
             out_of_range = 0
 
-            for (X,Y) in np.ndindex(self.background_array.shape):
-                val = self.background_array[X,Y]
+            # Y, X  is row, col
+            for (Y,X) in np.ndindex(self.background_array.shape):
+                val = self.background_array[Y,X]
                 if val not in bg_histogram.keys():
                     bg_histogram[val] = 1
                 else:
                     bg_histogram[val] += 1
 
                 # threshold for inclusion in list of relevant grid cells
-                #   if we use 0 this list is potentially huges
+                #   if we use 0 this list is potentially huge
                 #   if, alternatively, we use 0.0001, much quicker and v v v slightly less accurate.
                 if val > 0:
-                    bg_E = self.aarea_bl_east + self.aarea_csize * X + cellcentre
-                    bg_N = self.aarea_bl_north + self.aarea_csize * Y + cellcentre
-                    if bg_E >= self.aarea_bl_east and bg_E <= self.aarea_tr_east \
-                            and bg_N >= self.aarea_bl_north and bg_N <= self.aarea_tr_north:
+                    bg_E = self.sarea_bl_east + self.aarea_csize * X + cellcentre
+                    bg_N = self.sarea_bl_north + self.aarea_csize * Y + cellcentre
+                    if bg_E >= self.sarea_bl_east and bg_E <= self.sarea_tr_east \
+                            and bg_N >= self.sarea_bl_north and bg_N <= self.sarea_tr_north:
                         self.background_values.append((X, Y, bg_E, bg_N, val))
                     else:
                         out_of_range += 1
@@ -266,9 +283,11 @@ class ProjectParams:
                 origin_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False)
 
                 # filter the data to within the Study area
+                # note that we include (>=) BL, and exclude (<) TR to avoid overflow
+                #  may need to reduce further by csize / 2 to ensure this due to rounding
                 name_E = origin_df.columns.values[col_E-1]    # Easting column name
                 name_N = origin_df.columns.values[col_N - 1]  # Northing column name
-                bbquery = '{} >= {} & {} <= {} & {} >= {} & {} <= {}'.format(
+                bbquery = '{} >= {} & {} < {} & {} >= {} & {} < {}'.format(
                     name_E, self.sarea_bl_east, name_E, self.sarea_tr_east,
                     name_N, self.sarea_bl_north, name_N, self.sarea_tr_north)
 
@@ -442,9 +461,11 @@ class ProjectParams:
                     dest_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False)
 
                     # filter the data to within the Study area
+                    # note that we include (>=) BL, and exclude (<) TR to avoid overflow
+                    #  may need to reduce by csize / 2 to ensure this
                     name_E = dest_df.columns.values[col_E-1]    # Easting column name
                     name_N = dest_df.columns.values[col_N - 1]  # Northing column name
-                    bbquery = '{} >= {} & {} <= {} & {} >= {} & {} <= {}'.format(
+                    bbquery = '{} >= {} & {} < {} & {} >= {} & {} < {}'.format(
                         name_E, self.sarea_bl_east, name_E, self.sarea_tr_east,
                         name_N, self.sarea_bl_north, name_N, self.sarea_tr_north)
 
