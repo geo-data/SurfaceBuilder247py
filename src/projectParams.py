@@ -133,6 +133,10 @@ class ProjectParams:
             end_x = int(start_x + (self.sarea_tr_east - self.sarea_bl_east) / self.background_csize)
             end_y = int(start_y + (self.sarea_tr_north - self.sarea_bl_north) / self.background_csize)
 
+            # include an extra background grid row and column to capture locations along the very top and right
+            end_x += 1
+            end_y += 1
+
             # NOTE a numpy array is rows of columns [rownum - Y][colnum - X]
             self.background_array = self.background_array[start_y:end_y, start_x:end_x]
 
@@ -148,6 +152,14 @@ class ProjectParams:
             self.background_rows = int(self.background_header['nrows'])
             self.background_cols = int(self.background_header['ncols'])
             self.background_csize = int(self.background_header['cellsize'])
+
+            # background top right easting = bottom left easting + (cols*cellsize)
+            self.background_tr_east = self.background_bl_east \
+                                      + (self.background_cols * self.background_csize)
+
+            # background top right northing = bottom left northing + (rows*cellsize)
+            self.background_tr_north = self.background_bl_north \
+                                       + (self.background_rows * self.background_csize)
 
             logging.info('Background array clipped to the dimensions of Analysis Area')
 
@@ -287,7 +299,7 @@ class ProjectParams:
                 #  may need to reduce further by csize / 2 to ensure this due to rounding
                 name_E = origin_df.columns.values[col_E-1]    # Easting column name
                 name_N = origin_df.columns.values[col_N - 1]  # Northing column name
-                bbquery = '{} >= {} & {} < {} & {} >= {} & {} < {}'.format(
+                bbquery = '{} >= {} & {} <= {} & {} >= {} & {} <= {}'.format(
                     name_E, self.sarea_bl_east, name_E, self.sarea_tr_east,
                     name_N, self.sarea_bl_north, name_N, self.sarea_tr_north)
 
@@ -465,7 +477,7 @@ class ProjectParams:
                     #  may need to reduce by csize / 2 to ensure this
                     name_E = dest_df.columns.values[col_E-1]    # Easting column name
                     name_N = dest_df.columns.values[col_N - 1]  # Northing column name
-                    bbquery = '{} >= {} & {} < {} & {} >= {} & {} < {}'.format(
+                    bbquery = '{} >= {} & {} <= {} & {} >= {} & {} <= {}'.format(
                         name_E, self.sarea_bl_east, name_E, self.sarea_tr_east,
                         name_N, self.sarea_bl_north, name_N, self.sarea_tr_north)
 
@@ -646,9 +658,8 @@ class ProjectParams:
         return dest_wad
 
     def convertMajorFlows(self, mfstr):
-        # take a list of Major Flows (mfstr) as a string, return a list
-        # amount and list are appended to hold totals and indexes of origins, background cells, etc. later
-        # [  [ [IDcode, percent, amount, list], ... ], [ ... ] ... ]
+        # take a list of Major Flows (mfstr) as a string, return a list of tuples
+        # [  [ (IDcode, percent), ... ], [ ... ] ... ]
         # Note we are working with a single mf list, not the whole lot of them as per WADs
 
         # Empty list of all WADs for ALL destinations
@@ -660,7 +671,7 @@ class ProjectParams:
                 pair = list(mf_pair.split('>'))
                 idcode = pair[0]
                 perc = int(pair[1])
-                mf_item = [idcode, perc, 0, []]  # NOT a tuple, use array so we can append to it later
+                mf_item = (idcode, perc)  # MF tuple
                 mf_list.append(mf_item)
 
         return mf_list

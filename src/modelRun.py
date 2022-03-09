@@ -70,6 +70,7 @@ class ModelRun:
         self.dest_inTravel = []
         self.dest_onSite = []
         self.dest_EN = []  # list of Easting, Northing tuples
+        self.dest_XY = []
         self.dest_WAD = []
 
         for destdata in sb.projParams.destination_data:
@@ -122,6 +123,7 @@ class ModelRun:
                 self.dest_inTravel.append(dest_inTravel_pop)
                 self.dest_onSite.append(dest_onSite_pop)
                 self.dest_EN.append((dest_E, dest_N))
+                self.dest_XY.append(destdata['XY'][dest])
                 self.dest_WAD.append(destdata['WAD'][dest])
 
                 logging.info('\n    Dest ' + str(dest)
@@ -132,6 +134,47 @@ class ModelRun:
                              + '  total req: ' + str(round(dest_req_pop,3)))
 
                 dest_remove_check = 0
+
+                # Are there any Major Flows for this dest record?
+                #   if so, loop through each of them
+                #      grab ID pattern and percentage
+                #      calculate destination inTravel/onSite to remove based on mf percent
+                #      find the list of origins matching and the total population they hold
+                #      add origins to list of MF origins affected by this dest
+                #          for each origin in the list
+                #             calc ratio of origin pop to pop total
+                #             subtract proportion from origins
+
+                mf_list = destdata['major_flows']['MajorFlow1'][dest]
+                mf_origins_dest = []  # for checking against later
+                mf_total = 0
+                mf_total_inTravel = 0
+                mf_total_onSite = 0
+                if mf_list:
+                    for mf in mf_list:
+                        mf_ID = mf[0]
+                        mf_pc = mf[1]
+                        mf_dest_remove_inTravel = dest_inTravel_pop * mf_pc / 100  # do we need separate values?
+                        mf_dest_remove_onSite = dest_onSite_pop * mf_pc / 100
+                        mf_dest_remove_total = dest_req_pop * mf_pc / 100
+
+                        mf_total += mf_dest_remove_total  # update totals
+                        mf_total_inTravel += mf_dest_remove_inTravel
+                        mf_total_onSite += mf_dest_remove_onSite
+
+                        (mf_origins, mf_origin_pop) = self.mf_origin_list(sb, mf_ID)
+                        mf_origins_dest.extend(mf_origins)  # add to master list
+                        # now loop through each origin, removing the proportion from each
+                        for origin in mf_origins:
+                            origin_remove = self.originPopData[origin] / mf_origin_pop * mf_dest_remove_total
+                            self.originPopData[origin] -= origin_remove
+
+                    # reduce the remaining required destination amounts
+                    dest_inTravel_pop -= mf_total_inTravel
+                    dest_onSite_pop -= mf_total_onSite
+                    dest_remove_check += mf_total
+
+                    logging.info('      Major Flows: {} - Population removed {:.3f} from {} Origins'.format(len(mf_list), mf_total, len(mf_origins_dest)))
 
                 # loop through each WAD pair (assume nearest is always first)
 
@@ -150,7 +193,10 @@ class ModelRun:
                     if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
                         break
 
-                    if origin % self.orig_sample_rate != 0:  # sample the dest
+                    if origin % self.orig_sample_rate != 0:  # sample the origins
+                        continue
+
+                    if origin in mf_origins_dest:  # we have Major Flowed this origin already
                         continue
 
                     loop_count += 1
@@ -159,6 +205,8 @@ class ModelRun:
                     orig_N = sb.projParams.origin_data['northings'][origin]
 
                     orig_pop = self.originPopData[origin]
+
+                    # TODO - if the pop is zero, though unlikely,we might as well stop (continue) here?
 
                     # pythagoras gives us the distance between origin and destination
                     dist = math.sqrt((dest_E - orig_E) ** 2 + (dest_N - orig_N) ** 2)
@@ -236,8 +284,9 @@ class ModelRun:
                             # go through each origin index, remove in proportion with origin pop
                             pop = self.originPopData[origin]
                             orig_remove_total = pop / available_pop * wad_remove_total
-                            orig_remove_inTravel = pop / available_pop * wad_remove_inTravel
-                            orig_remove_onSite = pop / available_pop * wad_remove_onSite
+                            # breakdowns not used, probably not needed
+                            #orig_remove_inTravel = pop / available_pop * wad_remove_inTravel
+                            #orig_remove_onSite = pop / available_pop * wad_remove_onSite
                             self.originPopData[origin] -= orig_remove_total
                             logging.debug('        removed '
                                          + str(round(orig_remove_total,3))
@@ -306,6 +355,22 @@ class ModelRun:
         fulldate = fulldate + datetime.timedelta(minutes=mins)
         return fulldate.time()
 
+    def mf_origin_list(self, sb, mf_ID):
+
+        # find a list of origins matching this ID and the total origin population for them
+
+        mf_list = []
+        mf_pop = 0
+        mf_len = len(mf_ID)
+
+        for origin in range(0, len(sb.projParams.origin_data['eastings'])):
+            if sb.projParams.origin_data['ID'][origin][:mf_len] == mf_ID:
+                mf_list.append(origin)
+                mf_pop += self.originPopData[origin]
+
+        return(mf_list, mf_pop)
+
+
     def createGridData(self, sb):
 
         # create grids for each required source of data
@@ -320,7 +385,7 @@ class ModelRun:
         self.grid_dest_inTravel = self.createGrid_inTravel(sb)
 
         logging.info('\n   Destinations onSite   (.modelRun.grid_dest_onSite)...')
-        #self.grid_dest_onSite = self.createGrid(rows, cols, self.dest_XY, self.dest_onSite)
+        self.grid_dest_onSite = self.createGrid(rows, cols, self.dest_XY, self.dest_onSite)
 
     def saveGridData(self, sb, file_prefix):
 
@@ -342,7 +407,7 @@ class ModelRun:
         logging.info('   Written: ' + filename)
 
         filename = sb.projDir + file_prefix + 'dest_onSite.asc'
-        #np.savetxt(filename, np.flipud(self.grid_dest_onSite), fmt='%.4f', comments='', header=header)
+        np.savetxt(filename, np.flipud(self.grid_dest_onSite), fmt='%.4f', comments='', header=header)
         logging.info('   Written: ' + filename)
 
         logging.info('\n  Model Data Saved.')

@@ -11,13 +11,6 @@
 
 # Import core modules
 
-# NOT USED? import sys
-# NOT USED? import os
-# NOT USED? import csv
-# NOT USED? import math
-# NOT USED? import datetime
-# NOT USED? from datetime import date
-
 import logging
 
 # Import additional modules (which will need to be installed)
@@ -106,7 +99,7 @@ class SB247:
         self.projParams.sarea_tr_east = self.projParams.aarea_tr_east + aarea_buffer
         self.projParams.sarea_tr_north = self.projParams.aarea_tr_north + aarea_buffer
 
-        logging.info('Study Area:')
+        logging.info('\nStudy Area:')
         logging.info('  BL Easting  (.projParams.sarea_bl_east):  ' + str(self.projParams.sarea_bl_east))
         logging.info('  BL Northing (.projParams.sarea_bl_north): ' + str(self.projParams.sarea_bl_north))
         logging.info('  TR Easting  (.projParams.sarea_tr_east):  ' + str(self.projParams.sarea_tr_east))

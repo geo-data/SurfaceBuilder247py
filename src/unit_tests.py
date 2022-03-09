@@ -96,11 +96,11 @@ class MyTestCases(unittest.TestCase):
 
         # We can just check calculated values, which will be wrong if anything else is!
 
-        msg = pre + 'Background file TR Easting = 700000' + post
-        assert sb.projParams.background_tr_east == 700000, msg
+        msg = pre + 'Background file TR Easting = 389200' + post
+        assert sb.projParams.background_tr_east == 389200, msg
 
-        msg = pre + 'Background file TR Northing = 700000' + post
-        assert sb.projParams.background_tr_north == 700000, msg
+        msg = pre + 'Background file TR Northing = 176200' + post
+        assert sb.projParams.background_tr_north == 176200, msg
 
     def test_4_origin_file(self):
         # Check values from the origin file
