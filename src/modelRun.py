@@ -73,8 +73,13 @@ class ModelRun:
         self.dest_XY = []
         self.dest_WAD = []
 
-        # only need to make the full list once
-        all_origins = range(0, len(sb.projParams.origin_data['eastings']))
+        # determine origin selection method, depending on if there is a locationIndex
+        if sb.projParams.originLocationIndex == None:
+            use_location_index = False
+            # only need to make the full list once
+            all_origins = range(0, len(sb.projParams.origin_data['eastings']))
+        else:
+            use_location_index = True
 
         for destdata in sb.projParams.destination_data:
 
@@ -191,12 +196,14 @@ class ModelRun:
                 # find list of origins which are within the radius
 
                 # index method:
-                largest_radius = dest_wad[len(dest_wad)-1][0]
-                if largest_radius == 0:
-                    largest_radius = dest_wad[len(dest_wad) - 2][0]
-                potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
+                if use_location_index:
+                    largest_radius = dest_wad[len(dest_wad)-1][0]
+                    if largest_radius == 0:
+                        largest_radius = dest_wad[len(dest_wad) - 2][0]
+                    potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
+                else:
+                    potential_origins = all_origins
 
-                #for origin in all_origins:
                 for origin in potential_origins:
 
                     if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging

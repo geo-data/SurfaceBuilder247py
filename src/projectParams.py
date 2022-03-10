@@ -419,7 +419,13 @@ class ProjectParams:
                 logging.info('  Origin Population all subgroups pops total: ' + str(round(subgroups_total, 2)))
 
                 # create an index for quick access to locations
-                self.originLocationIndex = LocationIndex(self)
+                if (self.sarea_tr_east - self.sarea_bl_east) >= 120000 \
+                    or (self.sarea_tr_north - self.sarea_bl_north) >= 120000:
+                    logging.info('\n  Large Study Area: Populating Location Index with Origin data...')
+                    self.originLocationIndex = LocationIndex(self)
+                else:
+                    logging.info('\n  Small Study Area: No Origin data Location Index used')
+                    self.originLocationIndex = None
 
         except IOError as e:
             logging.error(e)
