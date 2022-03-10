@@ -73,6 +73,9 @@ class ModelRun:
         self.dest_XY = []
         self.dest_WAD = []
 
+        # only need to make the full list once
+        all_origins = range(0, len(sb.projParams.origin_data['eastings']))
+
         for destdata in sb.projParams.destination_data:
 
             logging.info('\n  New destination collection (' + destdata['Filename'] + ') ...')
@@ -145,7 +148,7 @@ class ModelRun:
                 #             calc ratio of origin pop to pop total
                 #             subtract proportion from origins
 
-                mf_list = destdata['major_flows']['MajorFlow1'][dest]
+                mf_list = destdata['major_flows'][self.ageband][dest]
                 mf_origins_dest = []  # for checking against later
                 mf_total = 0
                 mf_total_inTravel = 0
@@ -186,9 +189,15 @@ class ModelRun:
                     wad[3] = []  # empty list for origins
 
                 # find list of origins which are within the radius
-                # (could we store the indexes of these for next model run?)
 
-                for origin in range(0, len(sb.projParams.origin_data['eastings'])):
+                # index method:
+                largest_radius = dest_wad[len(dest_wad)-1][0]
+                if largest_radius == 0:
+                    largest_radius = dest_wad[len(dest_wad) - 2][0]
+                potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
+
+                #for origin in all_origins:
+                for origin in potential_origins:
 
                     if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
                         break

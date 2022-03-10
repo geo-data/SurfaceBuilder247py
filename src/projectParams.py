@@ -17,6 +17,8 @@ import math
 import numpy as np
 import pandas as pd
 
+from locationIndex import LocationIndex
+
 
 # A class for reading in and storing all Project parameters
 
@@ -190,7 +192,7 @@ class ProjectParams:
                 # threshold for inclusion in list of relevant grid cells
                 #   if we use 0 this list is potentially huge
                 #   if, alternatively, we use 0.0001, much quicker and v v v slightly less accurate.
-                if val > 0:
+                if val > 0.0001:
                     bg_E = self.sarea_bl_east + self.aarea_csize * X + cellcentre
                     bg_N = self.sarea_bl_north + self.aarea_csize * Y + cellcentre
                     if bg_E >= self.sarea_bl_east and bg_E <= self.sarea_tr_east \
@@ -416,6 +418,9 @@ class ProjectParams:
 
                 logging.info('  Origin Population all subgroups pops total: ' + str(round(subgroups_total, 2)))
 
+                # create an index for quick access to locations
+                self.originLocationIndex = LocationIndex(self)
+
         except IOError as e:
             logging.error(e)
 
@@ -558,7 +563,6 @@ class ProjectParams:
                                  + ' Total: ' + str(sum(dest_data['subgroups_pop'][dest_data['subgroup_names'][0]])))
                     logging.info('    Dest file Population all subgroups pops total: ' + str(round(subgroups_total, 2)))
 
-
                     # read in the time profile data
 
                     dest_data['time_profiles'] = []
@@ -599,19 +603,25 @@ class ProjectParams:
 
                     # read in each major flow column, add to major_flows dictionary
                     #   if none provided, we could leave out of the dictionary entirely?
+                    #   MF columns correspond to the Population ageband subgroups
                     dest_data['major_flows'] = {}
+                    idx = 0
                     for (columnName, columnData) in major_flows.iteritems():  # loop through the columns
-                        dest_data['major_flows'][columnName] = []
+                        if idx >= len(dest_data['subgroup_names']):
+                            break  # no more agebands, ignore the remaining MF columns
+                        ageband = dest_data['subgroup_names'][idx]
+                        dest_data['major_flows'][ageband] = []
                         mf_count = 0
                         for elem in columnData.to_list():
                             if elem and str(elem) != 'nan':
-                                dest_data['major_flows'][columnName].append(self.convertMajorFlows(elem))
+                                dest_data['major_flows'][ageband].append(self.convertMajorFlows(elem))
                                 mf_count += 1
                             else:
-                                dest_data['major_flows'][columnName].append(None)
+                                dest_data['major_flows'][ageband].append(None)
                                 #dest_data['major_flows'][columnName].append(self.convertMajorFlows('00MSNE>5|00MSMY>5|00MSNA>2'))
                         if mf_count > 0:
-                            logging.info('    Major flow {} with {} values'.format(columnName, mf_count))
+                            logging.info('    Major flow {} with {} values'.format(ageband, mf_count))
+                        idx += 1
 
 
                     # append to the destination array

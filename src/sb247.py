@@ -13,11 +13,6 @@
 
 import logging
 
-# Import additional modules (which will need to be installed)
-
-import numpy as np
-import pandas as pd
-
 from projectParams import ProjectParams
 from modelRun import ModelRun
 

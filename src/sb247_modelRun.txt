@@ -75,6 +75,3 @@ inTravel grid creation:
    #                add to same location in new grid:
    #                    dest pop * wad pc * background weighting /  total weighting
 
-
-
-# check when to sample!!!??
