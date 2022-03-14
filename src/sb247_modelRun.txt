@@ -3,14 +3,19 @@ Loading of the data in preparation for model runs
 
    # Calculate/check the Analysis area, Study area and Background file area
 
-   # Load the Background file, make a list of all non-(near)-zero cell coords, locations and values
+   # Load the Background file, clip it to the size of the Study area
+   #   make a list of all non-(near)-zero cell coords, locations and values
 
    # Load the Origin data, filter values to the Study area, calculate age-band populations
 
    # Load the Destination data, filter values to the Study area, calculate age-band populations
 
    # Load the Timeseries data
-   
+
+   # Create LocationIndex arrays:
+   #    used to quickly find all locations (origins or destinations) within a bounding box
+   #    Origin locationIndex is used for the model WAD candidate selection (if study area > 120km wide/high)
+   #    Origin and Destination locationIndex is used for Local Dispersal
 
 Description of the algorithm implemented by the modelRun class (work in progress)
 
@@ -60,8 +65,6 @@ Description of the algorithm implemented by the modelRun class (work in progress
    #                         pass origins to next WAD (or pull from next)
 
 
-# (NO!) remove from inTravel/onSite grids
-
 
 inTravel grid creation:
 
@@ -75,3 +78,37 @@ inTravel grid creation:
    #                add to same location in new grid:
    #                    dest pop * wad pc * background weighting /  total weighting
 
+
+Local Dispersion:
+
+After modelRun we have:
+- List of all Origins immobile: { E, N, pop, LDparam }
+- List of all Origins not distributed: { E, N, pop, LDparam }
+- List of all Destinations onSite { E, N, pop, LDparam }
+- LDparam is assumed to be the Cressman function parameter
+- [ Destination inTravel ignored as already dealt with using WAD ]
+
+   # for each { E, N, pop, LDparam } (separately for each class of data)
+   
+   #    find any other locations of the same data class also within the LDradius
+   #       calculate AVI (Inter Centroid Distance)
+   #          if none -> LDradius, if 1 -> distance, otherwise average distance
+   
+   #    get list of candidate results grid cells with centroid within AVI (affected)
+   
+   #    for each affected cell run Cressman:
+   #       calculate cell weight based on centroid distance from data E,N
+   #       add to results grid: data population value * cell weight / total weight (or scale to 1 above and mult)
+
+Saving CSV data: 
+
+# The 4 sources need to be dealt with separately, as the results table has them listed in separate columns:
+
+x	y	OriginLD	OriginImmob	Intravel	OnSite	Total
+320000	110000	0	0	0	0	0
+320000	110200	0	0	0	0	0
+320000	110400	0	0	0	0	0
+...
+
+   # loop through each X, Y, grab the value in each of the 4 grids
+   # Sum them into Total, if Total > 0 output a csv line to the results file

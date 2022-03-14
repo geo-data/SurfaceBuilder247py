@@ -14,6 +14,9 @@ import time
 import math
 import numpy as np
 
+from locationIndex import LocationIndex
+from gridCreate import GridCreate
+
 DEST_DEBUG_LIMIT = -1    # limit the number of rows we process (for each dest collection) for testing
 ORIG_DEBUG_LIMIT = -1    # set to a number or -1 for all of them
 
@@ -56,7 +59,7 @@ class ModelRun:
 
         # transfer immobile population
         self.originPopDataImmob = []
-        for origin in range(0, len(self.originPopData)):
+        for origin in range(len(self.originPopData)):
             immob = self.originPopData[origin] * sb.projParams.origin_data['subgroups_mob'][self.ageband][origin]
             self.originPopDataImmob.append(immob)
             self.originPopData[origin] -= immob
@@ -66,20 +69,25 @@ class ModelRun:
         originInitialPop = sum(self.originPopData)  # record initial total pop in this ageband
         destIncrease = 0  # (for checking) a record of how many dest pop transfers were made
 
-        # create arrays to store all of the destination data values needed (and their grid indexes)
-        self.dest_inTravel = []
-        self.dest_onSite = []
-        self.dest_EN = []  # list of Easting, Northing tuples
-        self.dest_XY = []
-        self.dest_WAD = []
+        # create dictionary of arrays to store all of the destination data values needed (and their grid indexes)
+        self.destination_data = {}
+        self.destination_data['inTravel'] = []
+        self.destination_data['onSite'] = []
+        self.destination_data['eastings'] = []  # list of Eastings
+        self.destination_data['northings'] = []  # list of Eastings
+        self.destination_data['XY'] = []
+        self.destination_data['WAD'] = []
+        self.destination_data['LD'] = []
 
-        # determine origin selection method, depending on if there is a locationIndex
-        if sb.projParams.originLocationIndex == None:
-            use_location_index = False
-            # only need to make the full list once
-            all_origins = range(0, len(sb.projParams.origin_data['eastings']))
-        else:
+        # determine origin selection method, depending on if there is a large study area
+        # if wider/higher than twice the common maximum WAD radius it will be highly beneficial
+        if (sb.projParams.sarea_tr_east - sb.projParams.sarea_bl_east) >= 120000 \
+                or (sb.projParams.sarea_tr_north - sb.projParams.sarea_bl_north) >= 120000:
+            logging.info('\n  Large Study Area: Using Origin Location Index')
             use_location_index = True
+        else:
+            use_location_index = False
+            all_origins = range(len(sb.projParams.origin_data['eastings']))
 
         for destdata in sb.projParams.destination_data:
 
@@ -89,7 +97,7 @@ class ModelRun:
 
             # loop through each destination row in the collection
 
-            for dest in range(0, len(destdata['pop_data'])):
+            for dest in range(len(destdata['pop_data'])):
 
                 if dest == DEST_DEBUG_LIMIT:  # fewer rows for debugging
                     break
@@ -128,11 +136,13 @@ class ModelRun:
                 dest_N = destdata['northings'][dest]
 
                 # save values and grid index for our output grids
-                self.dest_inTravel.append(dest_inTravel_pop)
-                self.dest_onSite.append(dest_onSite_pop)
-                self.dest_EN.append((dest_E, dest_N))
-                self.dest_XY.append(destdata['XY'][dest])
-                self.dest_WAD.append(destdata['WAD'][dest])
+                self.destination_data['inTravel'].append(dest_inTravel_pop)
+                self.destination_data['onSite'].append(dest_onSite_pop)
+                self.destination_data['eastings'].append(dest_E)
+                self.destination_data['northings'].append(dest_N)
+                self.destination_data['XY'].append(destdata['XY'][dest])
+                self.destination_data['WAD'].append(destdata['WAD'][dest])
+                self.destination_data['LD'].append(destdata['LD'][dest])
 
                 logging.info('\n    Dest ' + str(dest)
                              + '. E: ' + str(dest_E) + ' N: ' + str(dest_N)
@@ -379,7 +389,7 @@ class ModelRun:
         mf_pop = 0
         mf_len = len(mf_ID)
 
-        for origin in range(0, len(sb.projParams.origin_data['eastings'])):
+        for origin in range(len(sb.projParams.origin_data['eastings'])):
             if sb.projParams.origin_data['ID'][origin][:mf_len] == mf_ID:
                 mf_list.append(origin)
                 mf_pop += self.originPopData[origin]
@@ -387,161 +397,189 @@ class ModelRun:
         return(mf_list, mf_pop)
 
 
-    def createGridData(self, sb):
+    def createGridData(self, sb, create_non_LD):
 
-        # create grids for each required source of data
+        # Create grids for each required source of data
+        # Always create Local Dispersion grids
+        #   optionally (create_non_LD = true) create non dispersed grids for testing/comparison
 
         rows = sb.projParams.background_rows
         cols = sb.projParams.background_cols
+        gridCreator = GridCreate()
 
-        logging.info('   Origins remaining     (.modelRun.grid_origins) ...')
-        self.grid_origins = self.createGrid(rows, cols, sb.projParams.origin_data['XY'],self.originPopData)
+        logging.info('   Origins immobile     (.modelRun.grid_origins_immob) ...')
+        if create_non_LD:
+            self.grid_origins_immob = gridCreator.createGrid(rows, cols, sb.projParams.origin_data['XY'],self.originPopDataImmob)
+        else:
+            self.grid_origins_immob = None
+
+        self.grid_origins_immob_LD = gridCreator.createGrid_LD(sb, sb.projParams.origin_data,  # bounds / locations
+                                                               self.originPopDataImmob,        # the data to be spread
+                                                               sb.projParams.originLocationIndex)  # location index
+
+        logging.info('\n   Origins remaining     (.modelRun.grid_origins_remain) ...')
+        if create_non_LD:
+            self.grid_origins_remain = gridCreator.createGrid(rows, cols, sb.projParams.origin_data['XY'],self.originPopData)
+        else:
+            self.grid_origins_remain = None
+
+        self.grid_origins_remain_LD = gridCreator.createGrid_LD(sb, sb.projParams.origin_data,
+                                                             self.originPopData, sb.projParams.originLocationIndex)
 
         logging.info('\n   Destinations inTravel (.modelRun.grid_dest_inTravel)...')
-        self.grid_dest_inTravel = self.createGrid_inTravel(sb)
+        self.grid_dest_inTravel = gridCreator.createGrid_inTravel(sb, self.destination_data)
+
+        # create an index for quick access to Destination locations
+        logging.info('\n   Populating Destination Location Index...')
+        destinationLocationIndex = LocationIndex(sb.projParams, self.destination_data)
 
         logging.info('\n   Destinations onSite   (.modelRun.grid_dest_onSite)...')
-        self.grid_dest_onSite = self.createGrid(rows, cols, self.dest_XY, self.dest_onSite)
+        if create_non_LD:
+            self.grid_dest_onSite = gridCreator.createGrid(rows, cols,
+                                                    self.destination_data['XY'], self.destination_data['onSite'])
+        else:
+            self.grid_dest_onSite = None
+
+        self.grid_dest_onSite_LD = gridCreator.createGrid_LD(sb, self.destination_data,
+                                                             self.destination_data['onSite'],
+                                                             destinationLocationIndex)
 
     def saveGridData(self, sb, file_prefix):
 
-        # save grid data to files
+        # Save grid data to files, including option for both Locally Dispersed
+        #   and not dispersed (probably never wanted, just for comparison)
 
         # create a grid file header
-        header = ''
-        for (param, value) in sb.projParams.background_header.items():
-            header = header + param + ' ' + str(value) + '\n'
+        header = 'ncols        {}\nnrows        {}\nxllcorner    {}\nyllcorner    {}\ncellsize     {}\nNODATA_value  -9999'.format(
+            sb.projParams.aarea_cols, sb.projParams.aarea_rows,
+            sb.projParams.aarea_bl_east, sb.projParams.aarea_bl_north,
+            sb.projParams.aarea_csize)
+
+        # clip grids to the Analysis area
+        start_row = int((sb.projParams.background_rows - 1 - sb.projParams.aarea_rows) / 2)
+        start_col = int((sb.projParams.background_cols - 1 - sb.projParams.aarea_cols) / 2)
+        end_row = start_col + sb.projParams.aarea_rows
+        end_col = start_col + sb.projParams.aarea_cols
 
         # use flipud (flip up down) as ASCII Grids are written top to bottom
 
-        filename = sb.projDir + file_prefix + 'origins.asc'
-        np.savetxt(filename, np.flipud(self.grid_origins), fmt='%.4f', comments='', header=header)
-        logging.info('   Written: ' + filename)
+        if self.grid_origins_immob is not None:
+            self.grid_origins_immob = self.grid_origins_immob[start_col:end_col, start_row:end_row]
+            filename = sb.projDir + file_prefix + 'origins_immob.asc'
+            np.savetxt(filename, np.flipud(self.grid_origins_immob), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
 
-        filename = sb.projDir + file_prefix + 'dest_inTravel.asc'
-        np.savetxt(filename, np.flipud(self.grid_dest_inTravel), fmt='%.4f', comments='', header=header)
-        logging.info('   Written: ' + filename)
+        if self.grid_origins_immob_LD is not None:
+            self.grid_origins_immob_LD = self.grid_origins_immob_LD[start_col:end_col, start_row:end_row]
+            filename = sb.projDir + file_prefix + 'origins_immob_LD.asc'
+            np.savetxt(filename, np.flipud(self.grid_origins_immob_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
 
-        filename = sb.projDir + file_prefix + 'dest_onSite.asc'
-        np.savetxt(filename, np.flipud(self.grid_dest_onSite), fmt='%.4f', comments='', header=header)
-        logging.info('   Written: ' + filename)
+        if self.grid_origins_remain is not None:
+            self.grid_origins_remain = self.grid_origins_remain[start_col:end_col, start_row:end_row]
+            filename = sb.projDir + file_prefix + 'origins_remain.asc'
+            np.savetxt(filename, np.flipud(self.grid_origins_remain), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
 
-        logging.info('\n  Model Data Saved.')
+        if self.grid_origins_remain_LD is not None:
+            self.grid_origins_remain_LD = self.grid_origins_remain_LD[start_col:end_col, start_row:end_row]
+            filename = sb.projDir + file_prefix + 'origins_remain_LD.asc'
+            np.savetxt(filename, np.flipud(self.grid_origins_remain_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
 
-    def createGrid(self, rows, cols, XY_array, vals_array):
+        if self.grid_dest_inTravel is not None:
+            self.grid_dest_inTravel = self.grid_dest_inTravel[start_col:end_col, start_row:end_row]
+            filename = sb.projDir + file_prefix + 'dest_inTravel.asc'
+            np.savetxt(filename, np.flipud(self.grid_dest_inTravel), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
 
-        grid = np.zeros((rows,cols))
+        if self.grid_dest_onSite is not None:
+            self.grid_dest_onSite = self.grid_dest_onSite[start_col:end_col, start_row:end_row]
+            filename = sb.projDir + file_prefix + 'dest_onSite.asc'
+            np.savetxt(filename, np.flipud(self.grid_dest_onSite), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
 
-        minX = 10  # just for checking, we remove/comment out later
-        maxX = 10
-        minY = 10
-        maxY = 10
+        if self.grid_dest_onSite_LD is not None:
+            self.grid_dest_onSite_LD = self.grid_dest_onSite_LD[start_col:end_col, start_row:end_row]
+            filename = sb.projDir + file_prefix + 'dest_onSite_LD.asc'
+            np.savetxt(filename, np.flipud(self.grid_dest_onSite_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
 
-        for row in range(0, len(XY_array)):
-            (X, Y) = XY_array[row]
+    def saveCSVData(self, sb, file_prefix):
 
-            if X < minX:
-                minX = X
-            if X > maxX:
-                maxX = X
-            if Y < minY:
-                minY = Y
-            if Y > maxY:
-                maxY = Y
+        # The non-Locally Dispersed data (probably never wanted)
 
-            if X >= cols or Y >= rows:
-                logging.info('     Ignoring out of bounds value at row '
-                             + str(row) + ' ('+ str(X)+','+str(Y)+')')
-            else:
-                val = vals_array[row]
-                grid[Y,X] = val
+        if self.grid_origins_remain is not None and self.grid_origins_immob is not None \
+                and self.grid_dest_inTravel is not None and self.grid_dest_onSite is not None:
 
-        return grid
+            filename = sb.projDir + file_prefix + 'results.csv'
 
-    def createGrid_inTravel(self, sb):
+            header = 'E, N, OriginLD, OriginImmob, Intravel, OnSite, Total\n'
+            halfcell = int(sb.projParams.background_csize / 2)
 
-        # for each dest array in travel value
-        #    for each wad (rad:pc)
-        #       allocate background cells (within radius) and total bg amount into each wad
-        #
-        #    for each wad (pc)
-        #       -> amount within this radius
-        #            for each contained background cell
-        #                add to same place in new grid dest pop * wad pc * background weighting /  total weighting
+            try:
+                with open(filename, 'w') as file_opened:
 
-        rows = sb.projParams.background_rows
-        cols = sb.projParams.background_cols
+                    file_opened.write(header)
 
-        grid = np.zeros((rows,cols))
+                    for x, y in [(x, y) for x in range(sb.projParams.aarea_cols) for y in range(sb.projParams.aarea_rows)]:
+                        total = self.grid_origins_remain[y,x] \
+                            + self.grid_origins_immob[y,x] \
+                            + self.grid_dest_inTravel[y,x] \
+                            + self.grid_dest_onSite[y,x]
 
-        loop_count = 0
-        initialTime = time.time()
+                        if total > 0:
+                            E = sb.projParams.aarea_bl_east + (sb.projParams.aarea_csize * x) + halfcell
+                            N = sb.projParams.aarea_bl_north + (sb.projParams.aarea_csize * y) + halfcell
 
-        for row in range(0, len(self.dest_inTravel)):
-            (E, N) = self.dest_EN[row]
-            dest_WAD = self.dest_WAD[row]
-            dest_pop = self.dest_inTravel[row]
+                            data = '{}, {}, {}, {}, {}, {}, {}\n'.format(E, N,
+                                                                       self.grid_origins_remain[y,x],
+                                                                       self.grid_origins_immob[y,x],
+                                                                       self.grid_dest_inTravel[y,x],
+                                                                       self.grid_dest_onSite[y,x],
+                                                                       total)
+                            file_opened.write(data)
 
-            for wad in dest_WAD:
-                if wad[1] > 0:  # any data (pc > 0) to be held in here at all
-                    # reset holders for extra data
-                    wad[2] = 0     # background grid total
-                    wad[3] = []   # empty list for background grid cell indexes
+                    logging.info('   Written: ' + filename)
 
-            bgindex = 0
+            except IOError as e:
+                logging.error(e)
 
-            for bgcell in sb.projParams.background_values:
+        # the Locally Dispersed data
 
-                    bg_E = bgcell[2]
-                    bg_N = bgcell[3]
-                    bg_val = bgcell [4]
+        if self.grid_origins_remain_LD is not None and self.grid_origins_immob_LD is not None \
+                and self.grid_dest_inTravel is not None and self.grid_dest_onSite_LD is not None:
 
-                    # pythagoras gives us the distance between origin and destination
-                    dist = math.sqrt((bg_E - E) ** 2 + (bg_N - N) ** 2)
+            filename = sb.projDir + file_prefix + 'results_LD.csv'
 
-                    # which wad is this distance relevant to
-                    for wad in dest_WAD:
-                        if dist <= wad[0] or wad[0] == 0:  # within range or final zero catch all
-                            if wad[1] > 0:  # any data (pc > 0) to be held in here at all
-                                wad[2] += bg_val  # store the total origin population
-                                wad[3].append(bgindex)  # add the origin index to our list
-                                break
-                            # otherwise it will get added to the next wad outward
-                        loop_count += 1
+            header = 'E, N, OriginLD, OriginImmob, Intravel, OnSite, Total\n'
+            halfcell = int(sb.projParams.background_csize / 2)
 
-                    bgindex += 1
+            try:
+                with open(filename, 'w') as file_opened:
 
-            # the dest wad is now fully populated with grid cell indexes and total amounts
-            # loop through it again, spreading the dest inTravel pop into the relevant grid cells
+                    file_opened.write(header)
 
-            bg_tot = 0  # start with no background data
-            bg_cells = []  # and an empty list of background cell indexes
+                    for x, y in [(x, y) for x in range(sb.projParams.aarea_cols) for y in
+                                 range(sb.projParams.aarea_rows)]:
+                        total = self.grid_origins_remain_LD[y, x] \
+                                + self.grid_origins_immob_LD[y, x] \
+                                + self.grid_dest_inTravel[y, x] \
+                                + self.grid_dest_onSite_LD[y, x]
 
-            for wad in dest_WAD:
-                pc = wad[1]
+                        if total > 0:
+                            E = sb.projParams.aarea_bl_east + (sb.projParams.aarea_csize * x) + halfcell
+                            N = sb.projParams.aarea_bl_north + (sb.projParams.aarea_csize * y) + halfcell
 
-                if pc > 0:  # any data in here?
-                    bg_tot += wad[2]  # accumulate the background values
-                    bg_cells.extend(wad[3])  # add the background cells to the list to spread population
+                            data = '{}, {}, {}, {}, {}, {}, {}\n'.format(E, N,
+                                                                         self.grid_origins_remain_LD[y, x],
+                                                                         self.grid_origins_immob_LD[y, x],
+                                                                         self.grid_dest_inTravel[y, x],
+                                                                         self.grid_dest_onSite_LD[y, x],
+                                                                         total)
+                            file_opened.write(data)
 
-                    for bg in bg_cells:  # loop through the background cell indexes
-                        bgcell = sb.projParams.background_values[bg]
-                        X = bgcell[0]
-                        Y = bgcell[1]
-                        val = bgcell[4]
-                        # add the share of the pop (dest * wad pc) to the relevant grid cell (grid amount / grid tot)
-                        # Row - Y, Col - X
+                    logging.info('   Written: ' + filename)
 
-                        if X >= cols or Y >= rows:
-                            logging.info('     Ignoring out of bounds value at row '
-                                         + str(loop_count) + ' (' + str(X) + ',' + str(Y) + ')')
-                        else:
-                            grid[Y, X] = val
-
-                        grid[Y,X] += dest_pop * pc / 100 * val / bg_tot
-                        loop_count += 1
-
-        logging.info('\n     created - Loop count: ' + str(loop_count)
-                     + ' in ' + str(round(time.time() - initialTime,1)) + ' seconds')
-
-        return grid
+            except IOError as e:
+                logging.error(e)

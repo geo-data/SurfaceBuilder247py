@@ -147,13 +147,11 @@ class ProjectParams:
             self.background_header['nrows'] = end_y - start_y
             self.background_header['xllcorner'] = self.sarea_bl_east
             self.background_header['yllcorner'] = self.sarea_bl_north
-            self.background_header['cellsize'] = self.aarea_csize
 
             self.background_bl_east = int(self.background_header['xllcorner'])
             self.background_bl_north = int(self.background_header['yllcorner'])
             self.background_rows = int(self.background_header['nrows'])
             self.background_cols = int(self.background_header['ncols'])
-            self.background_csize = int(self.background_header['cellsize'])
 
             # background top right easting = bottom left easting + (cols*cellsize)
             self.background_tr_east = self.background_bl_east \
@@ -172,12 +170,16 @@ class ProjectParams:
             logging.info('  TR Northing (.projParams.background_tr_north): ' + str(self.background_tr_north))
             logging.info('  Rows        (.projParams.background_rows):     ' + str(self.background_rows))
             logging.info('  Cols        (.projParams.background_cols):     ' + str(self.background_cols))
-            logging.info('  Cellsize    (.projParams.background_csize):    ' + str(self.background_csize))
 
-            # populate a background values array with non-zero cells (and filter values to within study area)
-            #   tuples of (x, y, easting, northing, value)
-            self.background_values = []
-            cellcentre = round(self.aarea_csize / 2)
+            # populate a background values dictionary of arrays with non-zero cells
+            #   (and filter values to within study area)
+            self.background_data = {}
+            self.background_data['eastings'] = []
+            self.background_data['northings'] = []
+            self.background_data['XY'] = []
+            self.background_data['bgval'] = []
+
+            halfcell = int(self.aarea_csize / 2)
             bg_histogram = {}
             out_of_range = 0
 
@@ -193,15 +195,19 @@ class ProjectParams:
                 #   if we use 0 this list is potentially huge
                 #   if, alternatively, we use 0.0001, much quicker and v v v slightly less accurate.
                 if val > 0.0001:
-                    bg_E = self.sarea_bl_east + self.aarea_csize * X + cellcentre
-                    bg_N = self.sarea_bl_north + self.aarea_csize * Y + cellcentre
+                    bg_E = self.sarea_bl_east + self.aarea_csize * X + halfcell
+                    bg_N = self.sarea_bl_north + self.aarea_csize * Y + halfcell
                     if bg_E >= self.sarea_bl_east and bg_E <= self.sarea_tr_east \
                             and bg_N >= self.sarea_bl_north and bg_N <= self.sarea_tr_north:
-                        self.background_values.append((X, Y, bg_E, bg_N, val))
+                        self.background_data['eastings'].append(bg_E)
+                        self.background_data['northings'].append(bg_N)
+                        self.background_data['XY'].append((X, Y))
+                        self.background_data['bgval'].append(val)
                     else:
                         out_of_range += 1
 
-            logging.info('  Non-zero background cells within Study Area: ' + str(len(self.background_values)) + '  Out of range: ' + str(out_of_range))
+            logging.info('  Non-zero background cells within Study Area: ' \
+                         + str(len(self.background_data['eastings'])) + '  Out of range: ' + str(out_of_range))
 
         except IOError as e:
             logging.error(e)
@@ -235,7 +241,7 @@ class ProjectParams:
             else:
                 ts_weights = columnData.values
 
-                for row in range(0, len(ts_times)):  # now go through every row
+                for row in range(len(ts_times)):  # now go through every row
 
                     if ts_times[row] == 'InTravel':  # the start of an InTravel category
                         category = 'InTravel'
@@ -389,7 +395,7 @@ class ProjectParams:
                 csize = self.background_csize
                 self.origin_data['XY'] = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
 
-                for origin in range(0, len(self.origin_data['eastings'])):
+                for origin in range(len(self.origin_data['eastings'])):
                     orig_E = self.origin_data['eastings'][origin]
                     orig_N = self.origin_data['northings'][origin]
                     orig_X = round((orig_E - self.background_bl_east) / csize)
@@ -418,14 +424,10 @@ class ProjectParams:
 
                 logging.info('  Origin Population all subgroups pops total: ' + str(round(subgroups_total, 2)))
 
-                # create an index for quick access to locations
-                if (self.sarea_tr_east - self.sarea_bl_east) >= 120000 \
-                    or (self.sarea_tr_north - self.sarea_bl_north) >= 120000:
-                    logging.info('\n  Large Study Area: Populating Location Index with Origin data...')
-                    self.originLocationIndex = LocationIndex(self)
-                else:
-                    logging.info('\n  Small Study Area: No Origin data Location Index used')
-                    self.originLocationIndex = None
+                # create an index for quick access to Origin locations
+                # used in modelRun if area is large and Local Dispersion
+                logging.info('\n  Populating Origin Location Index...')
+                self.originLocationIndex = LocationIndex(self, self.origin_data)
 
         except IOError as e:
             logging.error(e)
@@ -510,7 +512,7 @@ class ProjectParams:
                     csize = self.background_csize
                     dest_data['XY'] = []  # array of grid X,Y coords, corresponding with the Easting/Northing values
 
-                    for dest in range(0, len(dest_data['eastings'])):
+                    for dest in range(len(dest_data['eastings'])):
                         dest_E = dest_data['eastings'][dest]
                         dest_N = dest_data['northings'][dest]
                         dest_X = round((dest_E - self.background_bl_east) / csize)

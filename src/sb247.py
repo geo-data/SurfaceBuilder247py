@@ -107,26 +107,48 @@ class SB247:
 
         logging.info(SPACER + 'Coordinate Geometry checks...' + SPACER2)
 
-        # Determine if study area is fully inside the background
+        # check Study area is not out of bounds
+
+        if (self.projParams.sarea_bl_east < 0 or self.projParams.sarea_bl_north < 0 \
+            or self.projParams.sarea_tr_east > 700000 or self.projParams.sarea_tr_north > 700000):
+            raise ValueError('Study area is out of bounds, please check the extent.')
+        else:
+            logging.info('  Study area bounding coordinates are valid.')
+
+        # buffer must be exactly divisible by cell size
+
+        if self.projParams.buffer % self.projParams.aarea_csize != 0:
+            raise ValueError('Buffer must be exactly divisible by the cell size.')
+        else:
+            logging.info('  Buffer and cell size are compatible.')
+
+        # Background cell size must match Study area cell size
+
+        if self.projParams.background_csize != self.projParams.aarea_csize:
+            raise ValueError('Background cell size does not match Study area cell size.')
+        else:
+            logging.info('  Buffer and Study area cell size are compatible.')
+
+        # Determine if Study area is fully inside the background
 
         if (self.projParams.background_bl_east > self.projParams.sarea_bl_east
             or self.projParams.background_bl_north > self.projParams.sarea_bl_north) \
                 and (self.projParams.background_tr_east < self.projParams.sarea_tr_east
                      or self.projParams.background_tr_north < self.projParams.sarea_tr_north):
-            logging.error('  Background does not cover study area, please check the extent.')
+            raise ValueError('Background does not cover study area, please check the extent.')
         else:
             logging.info('  Background covers the study area.')
 
-        # check to see if origin is wholly within the study area
+        # check to see if origin is wholly within the Study area
 
         if (self.projParams.origin_eastings_min < self.projParams.sarea_bl_east
                 or self.projParams.origin_northings_min < self.projParams.sarea_bl_north):
 
-            logging.info('  One of the origin centroids is beyond the bottom left extent of the study area.')
+            raise ValueError('One of the origin centroids is beyond the bottom left extent of the study area.')
         elif (self.projParams.origin_eastings_max > self.projParams.sarea_tr_east
               or self.projParams.origin_northings_max > self.projParams.sarea_tr_north):
 
-            logging.info('  One of the origin centroids is beyond the top right extent of the study area.')
+            raise ValueError('One of the origin centroids is beyond the top right extent of the study area.')
         else:
 
             logging.info('  Centroids are all within the study area.')
@@ -174,14 +196,19 @@ class SB247:
 
         self.modelRun.runModel(self)
 
-    def createGridData(self):
+    def createGridData(self, create_non_LD = False):
 
         logging.info(SPACER + 'Creating grid data from model outputs...' + SPACER2)
 
-        self.modelRun.createGridData(self)
+        self.modelRun.createGridData(self, create_non_LD)
 
-    def saveGridData(self, file_prefix):
+    def saveOutputData(self, file_prefix):
 
         logging.info(SPACER + 'Saving grid data to files...' + SPACER2)
 
         self.modelRun.saveGridData(self, file_prefix)
+
+        self.modelRun.saveCSVData(self, file_prefix)
+
+        logging.info('\n  Model Data Saved.')
+

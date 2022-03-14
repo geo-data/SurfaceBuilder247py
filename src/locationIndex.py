@@ -13,12 +13,15 @@ import logging
 # A class for indexing and caching candidate locations within an area
 #   These will later be checked using pythagoras, we are just cutting down the number to examine
 
-LOC_COLS=20
-LOC_ROWS=20
+LOC_COLS=40
+LOC_ROWS=40
 
 class LocationIndex:
 
-    def __init__(self, projParams):  # could be replaced with BL east, north and origin_data[] to be more generic
+    def __init__(self, projParams, location_data):
+        # projParams used to get bg bounding box (could be replaced with tr/bl e,n)
+        # location data identifies what to store (a dictionary with eastings and northings)
+
         # instantiate a 2D grid across the background to hold lists of origins within each cell
         # and an empty dictionary for caching previous grid lookups
         self.loc_cache = {}
@@ -32,9 +35,9 @@ class LocationIndex:
         self.bl_north = projParams.background_bl_north
 
         # insert all locations into their correct grid cell locations
-        for location in range(0, len(projParams.origin_data['eastings'])):
-            E = projParams.origin_data['eastings'][location]
-            N = projParams.origin_data['northings'][location]
+        for location in range(len(location_data['eastings'])):
+            E = location_data['eastings'][location]
+            N = location_data['northings'][location]
             # cell index:
             X = int((E - self.bl_east) / self.size_x)
             Y = int((N - self.bl_north) / self.size_y)
@@ -73,7 +76,7 @@ class LocationIndex:
 
         # add all stored grid locations from within the bounding box
         loc_list = []
-        for x, y in [(x, y) for x in range(X1,X2) for y in range(Y1,Y2)]:
+        for x, y in [(x, y) for x in range(X1, X2+1) for y in range(Y1, Y2+1)]:
             loc_list.extend(self.loc_index[y][x])
 
         # add to the cache and return it

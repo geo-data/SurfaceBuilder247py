@@ -30,14 +30,14 @@ def main():
         sb = SB247('./Data')
 
         # instance variables of the class are accessible as required
-        print('Project directory is... ' + sb.projDir)
+        print('Project directory: ' + sb.projDir)
 
         # Project parameters can be loaded from a Dictionary or (VB compatible) file
 
         # Load Project parameters from a dictionary
 
         proj_dict = {
-            'analysisarray': [373000,160000,40,40,200],
+            'analysisarray': [373000, 160000, 60, 60, 200],  # BL_E, BL_N, nrows, ncols, cellsize
             'buffer': 8000,
             'background': 'rastp6_monfri_10_16_2011.txt',
             'timeseries': 'TimeSeries.xls',
@@ -84,33 +84,37 @@ def main():
 
         # Everything is now loaded, run the model with some sample values
 
-        try:
-            ageband = '18_64'  # OV65
-            run_date = datetime.date(2020, 2, 25)  # currently not used
-            run_time = datetime.time(9, 40, 0)
+    except Exception as err:
+        logging.error('\nError loading data: ' + str(err))
+        exit(1)
 
-            sb.runSBModel(ageband, run_date, run_time,
-                          # optional testing parameters, for quick model run, remove or set to 1 for normal operation
-                          destination_sample_rate = 1,  # process 1 in N rows of each destination dataset
-                          origin_sample_rate = 1         # process 1 in N rows of origin data
-                          )
+    try:
+        ageband = 'OV65'  # OV65 or 18_64
+        run_date = datetime.date(2020, 2, 25)  # currently not used
+        run_time = datetime.time(8, 30, 0)
 
-            sb.createGridData()
+        sb.runSBModel(ageband, run_date, run_time,
+                      # optional testing parameters, for quick model run, remove or set to 1 for normal operation
+                      destination_sample_rate = 1,  # process 1 in N rows of each destination dataset
+                      origin_sample_rate = 1         # process 1 in N rows of origin data
+                      )
 
-            # Create a suitable path/file prefix for saving the files, based on model run parameters
-            file_prefix = 'Results/Bath_2011_0200_OTT_Paras_' \
-                          + ageband + '_' \
-                          + str(run_time.hour) + '_' + str(run_time.minute) + '_'
+        sb.createGridData(create_non_LD = True)
 
-            sb.saveGridData(file_prefix)
+        # Create a suitable path/file prefix for saving the files, based on model run parameters
+        file_prefix = 'Results/Bath_2011_0200_OTT_Paras_' \
+                      + ageband + '_' \
+                      + str(run_time.hour) + '_' + str(run_time.minute) + '_'
 
-            logging.info('\nRun successful.')
+        sb.saveOutputData(file_prefix)
 
-        except Exception as err:
-            logging.info('Problem running model: ' + str(err))
+        logging.info('\nRun successful.')
+        exit(0)
 
-    except Exception as e:
-        logging.error(e)
+    except Exception as err:
+        logging.info('Problem running model: ' + str(err))
+
+
 
 
 # Executed when the program runs
