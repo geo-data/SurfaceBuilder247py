@@ -464,43 +464,43 @@ class ModelRun:
         # use flipud (flip up down) as ASCII Grids are written top to bottom
 
         if self.grid_origins_immob is not None:
-            self.grid_origins_immob = self.grid_origins_immob[start_col:end_col, start_row:end_row]
+            self.grid_origins_immob = self.grid_origins_immob[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'origins_immob.asc'
             np.savetxt(filename, np.flipud(self.grid_origins_immob), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
         if self.grid_origins_immob_LD is not None:
-            self.grid_origins_immob_LD = self.grid_origins_immob_LD[start_col:end_col, start_row:end_row]
+            self.grid_origins_immob_LD = self.grid_origins_immob_LD[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'origins_immob_LD.asc'
             np.savetxt(filename, np.flipud(self.grid_origins_immob_LD), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
         if self.grid_origins_remain is not None:
-            self.grid_origins_remain = self.grid_origins_remain[start_col:end_col, start_row:end_row]
+            self.grid_origins_remain = self.grid_origins_remain[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'origins_remain.asc'
             np.savetxt(filename, np.flipud(self.grid_origins_remain), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
         if self.grid_origins_remain_LD is not None:
-            self.grid_origins_remain_LD = self.grid_origins_remain_LD[start_col:end_col, start_row:end_row]
+            self.grid_origins_remain_LD = self.grid_origins_remain_LD[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'origins_remain_LD.asc'
             np.savetxt(filename, np.flipud(self.grid_origins_remain_LD), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
         if self.grid_dest_inTravel is not None:
-            self.grid_dest_inTravel = self.grid_dest_inTravel[start_col:end_col, start_row:end_row]
+            self.grid_dest_inTravel = self.grid_dest_inTravel[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'dest_inTravel.asc'
             np.savetxt(filename, np.flipud(self.grid_dest_inTravel), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
         if self.grid_dest_onSite is not None:
-            self.grid_dest_onSite = self.grid_dest_onSite[start_col:end_col, start_row:end_row]
+            self.grid_dest_onSite = self.grid_dest_onSite[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'dest_onSite.asc'
             np.savetxt(filename, np.flipud(self.grid_dest_onSite), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
         if self.grid_dest_onSite_LD is not None:
-            self.grid_dest_onSite_LD = self.grid_dest_onSite_LD[start_col:end_col, start_row:end_row]
+            self.grid_dest_onSite_LD = self.grid_dest_onSite_LD[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'dest_onSite_LD.asc'
             np.savetxt(filename, np.flipud(self.grid_dest_onSite_LD), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
