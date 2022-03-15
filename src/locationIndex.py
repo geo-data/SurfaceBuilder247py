@@ -45,8 +45,6 @@ class LocationIndex:
             # add the location index to the containing cell
             self.loc_index[Y][X].append(location)
 
-
-
     def possible_locations(self, Easting, Northing, Distance):
         # find locations within the bounding box around the location +- distance
 

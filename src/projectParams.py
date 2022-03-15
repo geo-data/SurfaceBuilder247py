@@ -76,7 +76,7 @@ class ProjectParams:
         logging.info('  Origin            (.projParams.origin):        ' + self.origin)
         logging.info('  Destination Array (.projParams.destarray):     ' + str(self.destarray))
 
-    def loadBackground(self, filename):
+    def loadBackground(self, filename, threshold):
 
         header_rows = 6  # six rows for header information
 
@@ -194,7 +194,7 @@ class ProjectParams:
                 # threshold for inclusion in list of relevant grid cells
                 #   if we use 0 this list is potentially huge
                 #   if, alternatively, we use 0.0001, much quicker and v v v slightly less accurate.
-                if val > 0.0001:
+                if val > threshold:
                     bg_E = self.sarea_bl_east + self.aarea_csize * X + halfcell
                     bg_N = self.sarea_bl_north + self.aarea_csize * Y + halfcell
                     if bg_E >= self.sarea_bl_east and bg_E <= self.sarea_tr_east \

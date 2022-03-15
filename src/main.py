@@ -37,7 +37,7 @@ def main():
         # Load Project parameters from a dictionary
 
         proj_dict = {
-            'analysisarray': [373000, 160000, 60, 60, 200],  # BL_E, BL_N, nrows, ncols, cellsize
+            'analysisarray': [373000, 160000, 40, 40, 200],  # BL_E, BL_N, nrows, ncols, cellsize
             'buffer': 8000,
             'background': 'rastp6_monfri_10_16_2011.txt',
             'timeseries': 'TimeSeries.xls',
@@ -63,8 +63,11 @@ def main():
         sb.calcAreaCoords()
 
         # Load the Background from an Ascii grid file
+        #   Optional threshold parameter selection of lowest value to use for inTravel dispersion
+        #   0 includes all data, 0.0001 should make virtually no difference but speed things up for large areas
 
-        sb.loadBackgroundFromFile('BckGrnds/' + sb.projParams.background)
+        sb.loadBackgroundFromFile('BckGrnds/' + sb.projParams.background,
+                                  threshold = 0.0001)
 
         # Load the origin csv, get max/min coords
 

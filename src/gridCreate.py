@@ -74,7 +74,7 @@ class GridCreate:
 
         loop_count = 0
         lost_pop = 0
-        initialTime = time.time()
+        initialTime = time.time() 
 
         # determine background data selection method, depending on if there is a large study area
         # if wider/higher than twice the common maximum WAD radius it will be highly beneficial

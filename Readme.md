@@ -17,6 +17,10 @@ A Python (3.x and above) redevelopment of the original VB code.
 > 
 > `modelRun.py` - Run the model including the main algorithms
 > 
+> `locationIndex.py` - Structures and methods to rapidly identify data within a bounding area 
+> 
+> `gridCreate.py` - Create gridded data from model run outputs
+> 
 > `unit_tests.py`- Perform a series of validations (requires sample Data)
 
 e.g. run:

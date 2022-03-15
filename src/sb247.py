@@ -153,11 +153,12 @@ class SB247:
 
             logging.info('  Centroids are all within the study area.')
 
-    def loadBackgroundFromFile(self, filename):
+    def loadBackgroundFromFile(self, filename, threshold = 0):
 
-        logging.info(SPACER + 'Loading the Background file ' + self.projDir + filename + ' ...' + SPACER2)
+        logging.info(SPACER + 'Loading the Background file ' + self.projDir + filename
+                     + ' (values above ' + str(threshold) + ') ...' + SPACER2)
 
-        self.projParams.loadBackground(self.projDir + filename)
+        self.projParams.loadBackground(self.projDir + filename, threshold)
 
     def loadTimeSeriesFromFile(self, filename):
 
