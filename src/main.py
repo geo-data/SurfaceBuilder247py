@@ -99,10 +99,11 @@ def main():
         sb.runSBModel(ageband, run_date, run_time,
                       # optional testing parameters, for quick model run, remove or set to 1 for normal operation
                       destination_sample_rate = 1,  # process 1 in N rows of each destination dataset
-                      origin_sample_rate = 1         # process 1 in N rows of origin data
+                      origin_sample_rate = 1        # process 1 in N rows of origin data
                       )
 
-        sb.createGridData(create_non_LD = True)
+        sb.createGridData(create_non_LD = True,
+                          cressman_power = 1)
 
         # Create a suitable path/file prefix for saving the files, based on model run parameters
         file_prefix = 'Results/Bath_2011_0200_OTT_Paras_' \

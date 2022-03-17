@@ -666,7 +666,10 @@ class ProjectParams:
                     perc = int(pair[1])
                 else:
                     perc = int(wad_pairs)
-                    radius = 0  # set the radius to zero if not specified
+                    # we don't have a radius, but we can calculate a radius that delivers a pop density
+                    # consistent with what is inside the last radius:
+                    #   new radius = square root ( last radius squared / percentage inside last radius)
+                    radius = math.sqrt(radius ** 2 / ((100 - perc) / 100))
 
                 wad_pair = [ radius, perc, 0, [] ]  # NOT a tuple, use array so we can append to it later
                 wad_pairs_list.append(wad_pair)

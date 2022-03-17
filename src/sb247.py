@@ -197,11 +197,11 @@ class SB247:
 
         self.modelRun.runModel(self)
 
-    def createGridData(self, create_non_LD = False):
+    def createGridData(self, create_non_LD = False, cressman_power = 1):
 
         logging.info(SPACER + 'Creating grid data from model outputs...' + SPACER2)
 
-        self.modelRun.createGridData(self, create_non_LD)
+        self.modelRun.createGridData(self, create_non_LD, cressman_power)
 
     def saveOutputData(self, file_prefix):
 

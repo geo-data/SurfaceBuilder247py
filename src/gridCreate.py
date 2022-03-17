@@ -74,19 +74,10 @@ class GridCreate:
 
         loop_count = 0
         lost_pop = 0
-        initialTime = time.time() 
+        initialTime = time.time()
 
-        # determine background data selection method, depending on if there is a large study area
-        # if wider/higher than twice the common maximum WAD radius it will be highly beneficial
-        if (sb.projParams.sarea_tr_east - sb.projParams.sarea_bl_east) >= 120000 \
-                or (sb.projParams.sarea_tr_north - sb.projParams.sarea_bl_north) >= 120000:
-            logging.info('\n     Large Study Area: Using Background Location Index')
-            use_location_index = True
-            # create an index for quick access to non-zero Background locations
-            backgroundLocationIndex = LocationIndex(sb.projParams, sb.projParams.background_data)
-        else:
-            use_location_index = False
-            all_background_vals = range(len(sb.projParams.background_data['eastings']))
+        logging.info('\n     Creating Background Location Index')
+        backgroundLocationIndex = LocationIndex(sb.projParams, sb.projParams.background_data)
 
         for row in range(len(destination_data['inTravel'])):
             E = destination_data['eastings'][row]
@@ -101,14 +92,8 @@ class GridCreate:
                     wad[2] = 0     # background grid total
                     wad[3] = []   # empty list for background grid cell indexes
 
-            # index method:
-            if use_location_index:
-                largest_radius = dest_WAD[len(dest_WAD) - 1][0]
-                if largest_radius == 0:
-                    largest_radius = dest_WAD[len(dest_WAD) - 2][0]
-                potential_background_vals = backgroundLocationIndex.possible_locations(E, N, largest_radius)
-            else:
-                potential_background_vals = all_background_vals
+            largest_radius = dest_WAD[len(dest_WAD) - 1][0]
+            potential_background_vals = backgroundLocationIndex.possible_locations(E, N, largest_radius)
 
             for bgcell in potential_background_vals:
 
@@ -121,7 +106,7 @@ class GridCreate:
 
                     # which wad is this distance relevant to
                     for wad in dest_WAD:
-                        if dist <= wad[0] or wad[0] == 0:  # within range or final zero catch all
+                        if dist <= wad[0]:  # within range
                             if wad[1] > 0:  # any data (pc > 0) to be held in here at all
                                 wad[2] += bg_val  # store the total origin population
                                 wad[3].append(bgcell)  # add the background index to our list
@@ -132,15 +117,17 @@ class GridCreate:
             # the dest wad is now fully populated with grid cell indexes and total amounts
             # loop through it again, spreading the dest inTravel pop into the relevant grid cells
 
-            bg_tot = 0  # start with no background data
-            bg_cells = []  # and an empty list of background cell indexes
+            #bg_tot = 0  # start with no background data
+            #bg_cells = []  # and an empty list of background cell indexes
 
             for wad in dest_WAD:
                 pc = wad[1]
 
                 if pc > 0:  # any data in here?
-                    bg_tot += wad[2]  # accumulate the background values
-                    bg_cells.extend(wad[3])  # add the background cells to the list to spread population
+                    #bg_tot += wad[2]  # accumulate the background values
+                    #bg_cells.extend(wad[3])  # add the background cells to the list to spread population
+                    bg_tot = wad[2]  # available background values
+                    bg_cells = wad[3]  # available background cells
 
                     if bg_tot > 0:
                         pop = dest_pop_leftover + (dest_pop * pc / 100)  # pop to disperse amongst these cells
@@ -164,7 +151,7 @@ class GridCreate:
 
             if dest_pop_leftover > 0:
                 # we've been through all of our WADs and there is still undistributed population (hopefully unlikely)
-                logging.info('     Destination {} had {} unallocated population',format(row, dest_pop_leftover))
+                logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
                 lost_pop += dest_pop_leftover
 
         logging.info('\n     created - Loop count: {0} in {1} seconds'.format(loop_count,
@@ -174,7 +161,7 @@ class GridCreate:
 
         return grid
 
-    def createGrid_LD(self, sb, locations, vals_array, locationIndex):
+    def createGrid_LD(self, sb, locations, vals_array, locationIndex, cressman_power):
 
         # create a grid using Local Dispersion
 
@@ -248,6 +235,7 @@ class GridCreate:
                     dist_sq = dist ** 2
                     weight = ((avi_sq - dist_sq) / (avi_sq + dist_sq))
                     if weight > 0:  # only add to our list of cells for dispersion if weight is positive
+                        weight = weight ** cressman_power
                         total_weight += weight
                         # a tuple of the cell location and weight
                         cell_list.append((x, y, weight))

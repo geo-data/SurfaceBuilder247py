@@ -79,16 +79,6 @@ class ModelRun:
         self.destination_data['WAD'] = []
         self.destination_data['LD'] = []
 
-        # determine origin selection method, depending on if there is a large study area
-        # if wider/higher than twice the common maximum WAD radius it will be highly beneficial
-        if (sb.projParams.sarea_tr_east - sb.projParams.sarea_bl_east) >= 120000 \
-                or (sb.projParams.sarea_tr_north - sb.projParams.sarea_bl_north) >= 120000:
-            logging.info('\n  Large Study Area: Using Origin Location Index')
-            use_location_index = True
-        else:
-            use_location_index = False
-            all_origins = range(len(sb.projParams.origin_data['eastings']))
-
         for destdata in sb.projParams.destination_data:
 
             logging.info('\n  New destination collection (' + destdata['Filename'] + ') ...')
@@ -205,14 +195,11 @@ class ModelRun:
 
                 # find list of origins which are within the radius
 
-                # index method:
-                if use_location_index:
-                    largest_radius = dest_wad[len(dest_wad)-1][0]
-                    if largest_radius == 0:
-                        largest_radius = dest_wad[len(dest_wad) - 2][0]
-                    potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
-                else:
-                    potential_origins = all_origins
+                largest_radius = dest_wad[len(dest_wad) - 1][0]
+                potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
+
+                # apply potential origin reduction function here?
+                # reduce_function(potential_origins)
 
                 for origin in potential_origins:
 
@@ -244,7 +231,7 @@ class ModelRun:
 
                     # which wad is this distance relevant to
                     for wad in dest_wad:
-                        if dist <= wad[0] or wad[0] == 0:  # within range or final zero catch all
+                        if dist <= wad[0]:  # within range
                             wad[2] += orig_pop  # store the total origin population
                             wad[3].append(origin)  # add the origin index to our list
                             break
@@ -254,13 +241,13 @@ class ModelRun:
                 residue_inTravel = 0   # keep track of unmet wad pop requirement, to pass up to next radius
                 residue_onSite = 0
 
-                available_pop = 0    # keep track of wad pop available (prev and current WADs)
-                available_origins = []  # and list of those origins who will provide it
+                #available_pop = 0    # keep track of wad pop available (prev and current WADs)
+                #available_origins = []  # and list of those origins who will provide it
 
                 for wad in dest_wad:
 
                     origin_wad_pop = wad[2]
-                    available_pop += origin_wad_pop
+                    available_pop = origin_wad_pop
 
                     # figure out how many people need pulling for this WAD
                     rad = wad[0]
@@ -287,13 +274,15 @@ class ModelRun:
 
                     if available_pop > 0:  # some origin population is available to take
 
-                        available_origins.extend(wad[3]) # add these origins to the available list
+                        #available_origins.extend(wad[3]) # add these origins to the available list
+                        available_origins = wad[3]
 
                         if available_pop > residue_total:
                             # enough to satisfy requirement fully, satisfy all residue
                             wad_remove_total = residue_total
-                            wad_remove_inTravel = residue_inTravel
-                            wad_remove_onSite = residue_onSite
+                            # breakdowns not used, probably not needed
+                            # wad_remove_inTravel = residue_inTravel
+                            # wad_remove_onSite = residue_onSite
                             residue_inTravel = 0
                             residue_onSite = 0
                         else:
@@ -321,8 +310,8 @@ class ModelRun:
 
                         available_pop -= wad_remove_total  # update total pop available
 
-                        if available_pop == 0.0:  # may need some rounding, or v small val comparison?
-                            available_origins = []  # all used up, continue with empty array of origins
+                        #if available_pop == 0.0:  # may need some rounding, or v small val comparison?
+                        #    available_origins = []  # all used up, continue with empty array of origins
 
                         logging.debug('        Orig remove check: ' + str(round(orig_remove_check,3)))
                         dest_remove_check += orig_remove_check
@@ -397,11 +386,15 @@ class ModelRun:
         return(mf_list, mf_pop)
 
 
-    def createGridData(self, sb, create_non_LD):
+    def createGridData(self, sb, create_non_LD, cressman_power):
 
         # Create grids for each required source of data
         # Always create Local Dispersion grids
         #   optionally (create_non_LD = true) create non dispersed grids for testing/comparison
+        # Optional cressman_power parameter (default 1) raises the weighting to the power of N
+
+        if cressman_power != 1:
+            logging.info('   Cressman weightings scaled to the power of {}\n'.format(cressman_power))
 
         rows = sb.projParams.background_rows
         cols = sb.projParams.background_cols
@@ -415,7 +408,8 @@ class ModelRun:
 
         self.grid_origins_immob_LD = gridCreator.createGrid_LD(sb, sb.projParams.origin_data,  # bounds / locations
                                                                self.originPopDataImmob,        # the data to be spread
-                                                               sb.projParams.originLocationIndex)  # location index
+                                                               sb.projParams.originLocationIndex,  # location index
+                                                               cressman_power)
 
         logging.info('\n   Origins remaining     (.modelRun.grid_origins_remain) ...')
         if create_non_LD:
@@ -424,7 +418,8 @@ class ModelRun:
             self.grid_origins_remain = None
 
         self.grid_origins_remain_LD = gridCreator.createGrid_LD(sb, sb.projParams.origin_data,
-                                                             self.originPopData, sb.projParams.originLocationIndex)
+                                                                self.originPopData, sb.projParams.originLocationIndex,
+                                                                cressman_power)
 
         logging.info('\n   Destinations inTravel (.modelRun.grid_dest_inTravel)...')
         self.grid_dest_inTravel = gridCreator.createGrid_inTravel(sb, self.destination_data)
@@ -442,7 +437,8 @@ class ModelRun:
 
         self.grid_dest_onSite_LD = gridCreator.createGrid_LD(sb, self.destination_data,
                                                              self.destination_data['onSite'],
-                                                             destinationLocationIndex)
+                                                             destinationLocationIndex,
+                                                             cressman_power)
 
     def saveGridData(self, sb, file_prefix):
 
