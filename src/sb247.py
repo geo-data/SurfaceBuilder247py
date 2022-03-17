@@ -182,13 +182,15 @@ class SB247:
             self.projParams.loadDestFiles(self.projDir + pathname + '/')
 
     def runSBModel(self, ageBand, runDate, runTime,
-                 destination_sample_rate = 1,
-                 origin_sample_rate = 1):
+                   destination_sample_rate = 1,
+                   origin_sample_rate = 1,
+                   origin_reduce_function = None):
 
         logging.info(SPACER + 'Running the model...' + SPACER2)
 
         self.modelRun = ModelRun(ageBand, runDate, runTime,
-                                 destination_sample_rate, origin_sample_rate)
+                                 destination_sample_rate, origin_sample_rate,
+                                 origin_reduce_function)
 
         # sample_rate optional parameters are for testing model runs more quickly by sampling destinations / origins
         # not sensical for real data modelling

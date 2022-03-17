@@ -13,6 +13,7 @@ import datetime
 import time
 import math
 import numpy as np
+import copy
 
 from locationIndex import LocationIndex
 from gridCreate import GridCreate
@@ -27,11 +28,13 @@ class ModelRun:
 
     def __init__(self, ageBand, runDate, runTime,
                  dest_sample_rate,
-                 orig_sample_rate):
+                 orig_sample_rate,
+                 origin_reduce_function):
 
         self.ageband = ageBand
         self.date = runDate
         self.time = runTime
+        self.origin_reduce_function = origin_reduce_function
 
         logging.info('  Age band (.modelRun.ageband): ' + str(self.ageband))
         logging.info('  Date     (.modelRun.date):    ' + str(self.date))
@@ -186,7 +189,7 @@ class ModelRun:
 
                 # loop through each WAD pair (assume nearest is always first)
 
-                dest_wad = destdata['WAD'][dest]
+                dest_wad = copy.deepcopy(destdata['WAD'][dest])  # avoid updating the origin wad
 
                 for wad in dest_wad:
                     # reset the holders for extra data
@@ -197,9 +200,12 @@ class ModelRun:
 
                 largest_radius = dest_wad[len(dest_wad) - 1][0]
                 potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
+                logging.info('      Max radius: {:.3f} containing {} potential Origins'.format(largest_radius, len(potential_origins)))
 
-                # apply potential origin reduction function here?
-                # reduce_function(potential_origins)
+                # apply potential origin reduction function here (note some origins might be outside the radius)
+                # not here, work in progress
+                #if self.origin_reduce_function is not None:
+                #    potential_origins = self.origin_reduce_function(potential_origins)
 
                 for origin in potential_origins:
 
@@ -241,9 +247,6 @@ class ModelRun:
                 residue_inTravel = 0   # keep track of unmet wad pop requirement, to pass up to next radius
                 residue_onSite = 0
 
-                #available_pop = 0    # keep track of wad pop available (prev and current WADs)
-                #available_origins = []  # and list of those origins who will provide it
-
                 for wad in dest_wad:
 
                     origin_wad_pop = wad[2]
@@ -274,7 +277,6 @@ class ModelRun:
 
                     if available_pop > 0:  # some origin population is available to take
 
-                        #available_origins.extend(wad[3]) # add these origins to the available list
                         available_origins = wad[3]
 
                         if available_pop > residue_total:
@@ -309,9 +311,6 @@ class ModelRun:
                             orig_remove_check += orig_remove_total
 
                         available_pop -= wad_remove_total  # update total pop available
-
-                        #if available_pop == 0.0:  # may need some rounding, or v small val comparison?
-                        #    available_origins = []  # all used up, continue with empty array of origins
 
                         logging.debug('        Orig remove check: ' + str(round(orig_remove_check,3)))
                         dest_remove_check += orig_remove_check

@@ -65,7 +65,7 @@ class GridCreate:
         #    for each wad (pc)
         #       -> amount within this radius
         #            for each contained background cell
-        #                add to same place in new grid dest pop * wad pc * background weighting /  total weighting
+        #                add to same place in new grid dest pop * wad pc * background weighting / total weighting
 
         rows = sb.projParams.background_rows
         cols = sb.projParams.background_cols
@@ -76,7 +76,7 @@ class GridCreate:
         lost_pop = 0
         initialTime = time.time()
 
-        logging.info('\n     Creating Background Location Index')
+        logging.info('\n     Populating Background Location Index...')
         backgroundLocationIndex = LocationIndex(sb.projParams, sb.projParams.background_data)
 
         for row in range(len(destination_data['inTravel'])):
@@ -85,6 +85,10 @@ class GridCreate:
             dest_WAD = destination_data['WAD'][row]
             dest_pop = destination_data['inTravel'][row]
             dest_pop_leftover = 0  # for storing pop amounts that have nowhere to go within a WAD
+
+            if row % 1000 == 0:
+                #    print('.', end='', flush=True)
+                logging.info('     {} Destinations'.format(row))
 
             for wad in dest_WAD:
                 if wad[1] > 0:  # any data (pc > 0) to be held in here at all
@@ -117,15 +121,10 @@ class GridCreate:
             # the dest wad is now fully populated with grid cell indexes and total amounts
             # loop through it again, spreading the dest inTravel pop into the relevant grid cells
 
-            #bg_tot = 0  # start with no background data
-            #bg_cells = []  # and an empty list of background cell indexes
-
             for wad in dest_WAD:
                 pc = wad[1]
 
                 if pc > 0:  # any data in here?
-                    #bg_tot += wad[2]  # accumulate the background values
-                    #bg_cells.extend(wad[3])  # add the background cells to the list to spread population
                     bg_tot = wad[2]  # available background values
                     bg_cells = wad[3]  # available background cells
 
@@ -154,8 +153,8 @@ class GridCreate:
                 logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
                 lost_pop += dest_pop_leftover
 
-        logging.info('\n     created - Loop count: {0} in {1} seconds'.format(loop_count,
-                                                                              round(time.time() - initialTime, 1)))
+        logging.info('\n     created - Loop count: {} in {} seconds'.format(loop_count,
+                                                                            round(time.time() - initialTime, 1)))
         logging.info('     Values total: {:.3f}  Dispersed Grid total: {:.3f}  Unallocated: {:.3f}'.format(sum(destination_data['inTravel']),
                                                                                       sum(sum(grid)), lost_pop))
 
