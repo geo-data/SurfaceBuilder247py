@@ -534,11 +534,11 @@ class ModelRun:
                             N = sb.projParams.aarea_bl_north + (sb.projParams.aarea_csize * y) + halfcell
 
                             data = '{}, {}, {}, {}, {}, {}, {}\n'.format(E, N,
-                                                                       self.grid_origins_remain[y,x],
-                                                                       self.grid_origins_immob[y,x],
-                                                                       self.grid_dest_inTravel[y,x],
-                                                                       self.grid_dest_onSite[y,x],
-                                                                       total)
+                                                                       round(self.grid_origins_remain[y,x],7),
+                                                                       round(self.grid_origins_immob[y,x],7),
+                                                                       round(self.grid_dest_inTravel[y,x],7),
+                                                                       round(self.grid_dest_onSite[y,x],7),
+                                                                       round(total,7))
                             file_opened.write(data)
 
                     logging.info('   Written: ' + filename)
@@ -573,11 +573,11 @@ class ModelRun:
                             N = sb.projParams.aarea_bl_north + (sb.projParams.aarea_csize * y) + halfcell
 
                             data = '{}, {}, {}, {}, {}, {}, {}\n'.format(E, N,
-                                                                         self.grid_origins_remain_LD[y, x],
-                                                                         self.grid_origins_immob_LD[y, x],
-                                                                         self.grid_dest_inTravel[y, x],
-                                                                         self.grid_dest_onSite_LD[y, x],
-                                                                         total)
+                                                                         round(self.grid_origins_remain_LD[y, x],7),
+                                                                         round(self.grid_origins_immob_LD[y, x],7),
+                                                                         round(self.grid_dest_inTravel[y, x],7),
+                                                                         round(self.grid_dest_onSite_LD[y, x],7),
+                                                                         round(total,7))
                             file_opened.write(data)
 
                     logging.info('   Written: ' + filename)
