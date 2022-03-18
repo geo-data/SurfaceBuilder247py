@@ -12,6 +12,9 @@
 #   See https://docs.python.org/3/library/unittest.html
 
 import unittest
+import datetime
+import hashlib
+import os
 
 from sb247 import SB247
 
@@ -171,8 +174,8 @@ class MyTestCases(unittest.TestCase):
         msg = pre + 'Destination final file final pop subgroups final value = 5.070422535' + post
         assert dest_check['subgroups_data']['OV65'][305] == 5.070422535, msg
 
-        msg = pre + 'Destination final file WAD last row, second tuple radius = 2000 ' + post
-        assert dest_check['WAD'][305][1][0] == 2000, msg
+        msg = pre + 'Destination final file WAD last row, second tuple radius squared = 2000^2 ' + post
+        assert dest_check['WAD'][305][1][0] == 2000 ** 2, msg
 
         msg = pre + 'Destination file WAD last row, third tuple percent = 12 ' + post
         assert dest_check['WAD'][305][2][1] == 12, msg
@@ -193,6 +196,69 @@ class MyTestCases(unittest.TestCase):
 
         msg = pre + 'Timeseries first final weight value = 2.68065 ' + post
         assert sb.projParams.timeseries_data['TS01.WKG.6Offb'.upper()]['OnSite'][first_time] == 2.68065, msg
+
+    def test_7_run_model(self):
+        # run the model, check the ouptput grids
+
+        print("test_7_run_model: check model output gridded values")
+
+        ageband = 'OV65'
+        run_date = datetime.date(2020, 2, 25)  # currently not used
+        run_time = datetime.time(9, 30, 0)
+
+        sb.runSBModel(ageband, run_date, run_time,
+                      destination_sample_rate = 20,
+                      origin_sample_rate = 5)
+
+        sb.createGridData()
+
+        msg = pre + 'Sum of all remaining origins locally dispersed = 53639' + post
+        assert int(sum(sum(sb.modelRun.grid_origins_remain_LD))) == 53639, msg
+
+        msg = pre + 'Sum of all on site destinations locally dispersed = 153' + post
+        assert int(sum(sum(sb.modelRun.grid_dest_onSite_LD))) == 153, msg
+
+        msg = pre + 'Sum of all in travel destinations = 13' + post
+        assert int(sum(sum(sb.modelRun.grid_dest_inTravel))) == 13, msg
+
+        msg = pre + 'Sum of all immobile origins locally dispersed = 689' + post
+        assert int(sum(sum(sb.modelRun.grid_origins_immob_LD))) == 689, msg
+
+    def test_8_save_data(self):
+        # Save the data (temporarily), check the file checksums!
+
+        print("test_8_save_data: Save and check output data")
+
+        sb.saveOutputData('Results/Unit_tests_')
+
+        ck1 = self.file_checksum(sb.projDir + 'Results/Unit_tests_dest_inTravel.asc')[:16]
+        ck2 = self.file_checksum(sb.projDir + 'Results/Unit_tests_dest_onSite_LD.asc')[:16]
+        ck3 = self.file_checksum(sb.projDir + 'Results/Unit_tests_origins_immob_LD.asc')[:16]
+        ck4 = self.file_checksum(sb.projDir + 'Results/Unit_tests_origins_remain_LD.asc')[:16]
+        ck5 = self.file_checksum(sb.projDir + 'Results/Unit_tests_results_LD.csv')[:16]
+
+        msg = pre + 'Check all saved file checksums are as expected' + post
+        assert ck1 + ck2 + ck3 + ck4 + ck5 == \
+               'c68e4c91b2c93d5e9b878a2468f962c474ba30ae216ba442262e4de5dd47ccbf796d7ffecb23a7a5', msg
+
+        # remove the files
+        os.remove(sb.projDir + 'Results/Unit_tests_dest_inTravel.asc')
+        os.remove(sb.projDir + 'Results/Unit_tests_dest_onSite_LD.asc')
+        os.remove(sb.projDir + 'Results/Unit_tests_origins_immob_LD.asc')
+        os.remove(sb.projDir + 'Results/Unit_tests_origins_remain_LD.asc')
+        os.remove(sb.projDir + 'Results/Unit_tests_results_LD.csv')
+
+    def file_checksum(self, filename):
+        try:
+            with open(filename, 'r') as file_opened:
+                content = file_opened.read().encode('ascii', 'ignore')
+                hl = hashlib.sha256()
+                hash = hl.update(content)
+                digest = hl.hexdigest()
+                return digest
+
+        except IOError as e:
+            assert 'File read error', e
 
 
 # Executed when the program runs
