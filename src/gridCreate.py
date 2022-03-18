@@ -9,9 +9,9 @@
 # Import core modules
 
 import logging
-import datetime
 import time
 import math
+import copy
 
 # Import additional modules (which will need to be installed)
 
@@ -82,7 +82,8 @@ class GridCreate:
         for row in range(len(destination_data['inTravel'])):
             E = destination_data['eastings'][row]
             N = destination_data['northings'][row]
-            dest_WAD = destination_data['WAD'][row]
+            dest_WAD = copy.deepcopy(destination_data['WAD'][row])
+            # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty location list
             dest_pop = destination_data['inTravel'][row]
             dest_pop_leftover = 0  # for storing pop amounts that have nowhere to go within a WAD
 
@@ -90,13 +91,7 @@ class GridCreate:
                 #    print('.', end='', flush=True)
                 logging.info('     {} Destinations'.format(row))
 
-            for wad in dest_WAD:
-                if wad[1] > 0:  # any data (pc > 0) to be held in here at all
-                    # reset holders for extra data
-                    wad[2] = 0     # background grid total
-                    wad[3] = []   # empty list for background grid cell indexes
-
-            largest_radius = dest_WAD[len(dest_WAD) - 1][0]
+            largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
             potential_background_vals = backgroundLocationIndex.possible_locations(E, N, largest_radius)
 
             for bgcell in potential_background_vals:
@@ -106,11 +101,11 @@ class GridCreate:
                     bg_val = sb.projParams.background_data['bgval'][bgcell]
 
                     # pythagoras gives us the distance between origin and destination
-                    dist = math.sqrt((bg_E - E) ** 2 + (bg_N - N) ** 2)
+                    dist_sq = (bg_E - E) ** 2 + (bg_N - N) ** 2
 
                     # which wad is this distance relevant to
                     for wad in dest_WAD:
-                        if dist <= wad[0]:  # within range
+                        if dist_sq <= wad[0]:  # within range
                             if wad[1] > 0:  # any data (pc > 0) to be held in here at all
                                 wad[2] += bg_val  # store the total origin population
                                 wad[3].append(bgcell)  # add the background index to our list
@@ -131,6 +126,7 @@ class GridCreate:
                     if bg_tot > 0:
                         pop = dest_pop_leftover + (dest_pop * pc / 100)  # pop to disperse amongst these cells
                         dest_pop_leftover = 0
+                        mult = pop / bg_tot
 
                         for bg in bg_cells:  # loop through the background cell indexes
                             (X, Y) = sb.projParams.background_data['XY'][bg]
@@ -138,11 +134,11 @@ class GridCreate:
                             loop_count += 1
                             # add the share of the pop (dest * wad pc) to the relevant grid cell (grid amount / grid tot)
                             # Row - Y, Col - X
-                            if X >= cols or Y >= rows:
-                                logging.info('     Ignoring out of bounds value at row '
-                                             + str(loop_count) + ' (' + str(X) + ',' + str(Y) + ')')
-                            else:
-                                grid[Y, X] += pop * bgval / bg_tot
+                            #if X >= cols or Y >= rows:
+                            #    logging.info('     Ignoring out of bounds value at row '
+                            #                 + str(loop_count) + ' (' + str(X) + ',' + str(Y) + ')')
+                            #else:
+                            grid[Y, X] += bgval * mult
 
                     else:
                         # there are no non-zero bg cells in this WAD, but we still have pop to disperse

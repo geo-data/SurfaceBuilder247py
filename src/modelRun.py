@@ -92,8 +92,8 @@ class ModelRun:
 
             for dest in range(len(destdata['pop_data'])):
 
-                if dest == DEST_DEBUG_LIMIT:  # fewer rows for debugging
-                    break
+                #if dest == DEST_DEBUG_LIMIT:  # fewer rows for debugging
+                #    break
 
                 if dest % self.dest_sample_rate != 0:  # sample the dest
                     continue
@@ -189,16 +189,12 @@ class ModelRun:
 
                 # loop through each WAD pair (assume nearest is always first)
 
-                dest_wad = copy.deepcopy(destdata['WAD'][dest])  # avoid updating the origin wad
-
-                for wad in dest_wad:
-                    # reset the holders for extra data
-                    wad[2] = 0  # population count for the origin list
-                    wad[3] = []  # empty list for origins
+                dest_WAD = copy.deepcopy(destdata['WAD'][dest])  # avoid updating the origin wad
+                # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty origin list
 
                 # find list of origins which are within the radius
 
-                largest_radius = dest_wad[len(dest_wad) - 1][0]
+                largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
                 potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
                 logging.info('      Max radius: {:.3f} containing {} potential Origins'.format(largest_radius, len(potential_origins)))
 
@@ -209,8 +205,8 @@ class ModelRun:
 
                 for origin in potential_origins:
 
-                    if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
-                        break
+                    #if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
+                    #    break
 
                     if origin % self.orig_sample_rate != 0:  # sample the origins
                         continue
@@ -225,19 +221,22 @@ class ModelRun:
 
                     orig_pop = self.originPopData[origin]
 
-                    # TODO - if the pop is zero, though unlikely,we might as well stop (continue) here?
+                    # if the pop is zero, though unlikely, we might as well stop (continue) here?
+                    #  test more later when using more destinations, appears to slow things down
+                    #if orig_pop == 0:
+                    #    continue
 
                     # pythagoras gives us the distance between origin and destination
-                    dist = math.sqrt((dest_E - orig_E) ** 2 + (dest_N - orig_N) ** 2)
+                    dist_sq = (dest_E - orig_E) ** 2 + (dest_N - orig_N) ** 2
 
-                    logging.debug('      Orig ' + str(origin)
-                                 + '. E: ' + str(orig_E) + ' N: ' + str(orig_N)
-                                 + ' Pop: ' + str(round(orig_pop, 2))
-                                 + ' distance: ' + str(round(dist, 2)))
+                    #logging.debug('      Orig ' + str(origin)
+                    #             + '. E: ' + str(orig_E) + ' N: ' + str(orig_N)
+                    #             + ' Pop: ' + str(round(orig_pop, 2))
+                    #             + ' distance: ' + str(round(dist, 2)))
 
                     # which wad is this distance relevant to
-                    for wad in dest_wad:
-                        if dist <= wad[0]:  # within range
+                    for wad in dest_WAD:
+                        if dist_sq <= wad[0]:  # within range
                             wad[2] += orig_pop  # store the total origin population
                             wad[3].append(origin)  # add the origin index to our list
                             break
@@ -247,23 +246,24 @@ class ModelRun:
                 residue_inTravel = 0   # keep track of unmet wad pop requirement, to pass up to next radius
                 residue_onSite = 0
 
-                for wad in dest_wad:
+                for wad in dest_WAD:
 
-                    origin_wad_pop = wad[2]
-                    available_pop = origin_wad_pop
+                    # origin_wad_pop = wad[2]
+                    available_pop = wad[2]
 
                     # figure out how many people need pulling for this WAD
-                    rad = wad[0]
+                    #rad = wad[0]
                     pc = wad[1]
                     wad_inTravel = dest_inTravel_pop * pc / 100
                     wad_onSite = dest_onSite_pop * pc / 100
-                    wad_total = wad_inTravel + wad_onSite  # to remove from these origins
+                    #wad_total = wad_inTravel + wad_onSite  # to remove from these origins
 
                     # add to our current balance of required pop for dest
                     residue_inTravel += wad_inTravel
                     residue_onSite += wad_onSite
                     residue_total = residue_inTravel + residue_onSite
 
+                    """
                     logging.debug('      ' + str(pc) + '%  within ' + str(rad) + 'm -> '
                                  + ' inTravel ' + str(round(wad_inTravel, 3))
                                  + ', onSite ' + str(round(wad_onSite, 3))
@@ -273,6 +273,8 @@ class ModelRun:
                                  + ' inTravel ' + str(round(residue_inTravel, 3))
                                  + ', onSite ' + str(round(residue_onSite, 3))
                                  + ' total ' + str(round(residue_total,3)))
+                    """
+
                     orig_remove_check = 0
 
                     if available_pop > 0:  # some origin population is available to take
@@ -294,25 +296,29 @@ class ModelRun:
                             wad_remove_onSite = wad_remove_total * dest_onSite_ratio
                             residue_inTravel -= wad_remove_inTravel
                             residue_onSite -= wad_remove_onSite
-                            logging.debug('not enough origin pop in this WAD!')
+                            #logging.debug('not enough origin pop in this WAD!')
 
                         # let's do some removing of pops from origins
+                        # code is much optimised by using a simple multiplier
+                        mult = (available_pop - wad_remove_total) / available_pop
                         for origin in available_origins:
                             # go through each origin index, remove in proportion with origin pop
-                            pop = self.originPopData[origin]
-                            orig_remove_total = pop / available_pop * wad_remove_total
+                            #pop = self.originPopData[origin]
+                            #orig_remove_total = pop / available_pop * wad_remove_total
                             # breakdowns not used, probably not needed
                             #orig_remove_inTravel = pop / available_pop * wad_remove_inTravel
                             #orig_remove_onSite = pop / available_pop * wad_remove_onSite
-                            self.originPopData[origin] -= orig_remove_total
-                            logging.debug('        removed '
-                                         + str(round(orig_remove_total,3))
-                                         + ' from ' + str(origin) + ' (' + str(round(pop,3)) + ')')
-                            orig_remove_check += orig_remove_total
+                            #self.originPopData[origin] -= orig_remove_total
+                            self.originPopData[origin] *= mult
+                            #logging.debug('        removed '
+                            #             + str(round(orig_remove_total,3))
+                            #             + ' from ' + str(origin) + ' (' + str(round(pop,3)) + ')')
+                            #orig_remove_check += orig_remove_total
 
                         available_pop -= wad_remove_total  # update total pop available
+                        orig_remove_check = wad_remove_total
 
-                        logging.debug('        Orig remove check: ' + str(round(orig_remove_check,3)))
+                        #logging.debug('        Orig remove check: ' + str(round(orig_remove_check,3)))
                         dest_remove_check += orig_remove_check
 
                 # destination is complete, check we removed the full amount

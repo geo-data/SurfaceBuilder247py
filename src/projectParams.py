@@ -648,9 +648,7 @@ class ProjectParams:
         # take a list of WADs as strings, return a new list of lists of tuples (now lists, so we can add to them):
         # amount and list are appended to hold totals and indexes of origins, background cells, etc. later
         # [  [ [radius, percent, amount, list], ... ], [ ... ] ... ]
-
-        # get rid of the pipe separator
-        # dest_df_wad = wad_list.str.split('|')
+        # to optimise the model run and grid creation, we will store radius squared
 
         # Empty list of all WADs for ALL destinations
         dest_wad = []
@@ -662,16 +660,17 @@ class ProjectParams:
 
                 if '>' in wad_pairs:
                     pair = list(wad_pairs.split('>'))
-                    radius = int(pair[0])
+                    radius_sq = int(pair[0]) ** 2
                     perc = int(pair[1])
                 else:
                     perc = int(wad_pairs)
                     # we don't have a radius, but we can calculate a radius that delivers a pop density
                     # consistent with what is inside the last radius:
                     #   new radius = square root ( last radius squared / percentage inside last radius)
-                    radius = math.sqrt(radius ** 2 / ((100 - perc) / 100))
+                    #radius = math.sqrt(radius ** 2 / ((100 - perc) / 100))
+                    radius_sq = radius_sq / ((100 - perc) / 100)
 
-                wad_pair = [ radius, perc, 0, [] ]  # NOT a tuple, use array so we can append to it later
+                wad_pair = [ radius_sq, perc, 0, [] ]  # NOT a tuple, use array so we can append to it later
                 wad_pairs_list.append(wad_pair)
 
             dest_wad.append(wad_pairs_list)

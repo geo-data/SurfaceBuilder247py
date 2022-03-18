@@ -13,8 +13,8 @@ import logging
 # A class for indexing and caching candidate locations within an area
 #   These will later be checked using pythagoras, we are just cutting down the number to examine
 
-LOC_COLS=40
-LOC_ROWS=40
+LOC_COLS=100
+LOC_ROWS=100
 
 class LocationIndex:
 
