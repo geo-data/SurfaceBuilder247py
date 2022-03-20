@@ -195,51 +195,53 @@ class ModelRun:
                 # find list of origins which are within the radius
 
                 largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
-                potential_origins = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
-                logging.info('      Max radius: {:.3f} containing {} potential Origins'.format(largest_radius, len(potential_origins)))
+                potential_origins_array = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
+                #logging.info('      Max radius: {:.3f} containing {} potential Origins'.format(largest_radius,
+                #                                                                               len(potential_origins_array)))
 
                 # apply potential origin reduction function here (note some origins might be outside the radius)
                 # not here, work in progress
                 #if self.origin_reduce_function is not None:
                 #    potential_origins = self.origin_reduce_function(potential_origins)
 
-                for origin in potential_origins:
+                for potential_origins in potential_origins_array:
+                    for origin in potential_origins:
 
-                    #if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
-                    #    break
+                        #if origin == ORIG_DEBUG_LIMIT:  # fewer rows for debugging
+                        #    break
 
-                    if origin % self.orig_sample_rate != 0:  # sample the origins
-                        continue
+                        if origin % self.orig_sample_rate != 0:  # sample the origins
+                            continue
 
-                    if origin in mf_origins_dest:  # we have Major Flowed this origin already
-                        continue
+                        if origin in mf_origins_dest:  # we have Major Flowed this origin already
+                            continue
 
-                    loop_count += 1
+                        loop_count += 1
 
-                    orig_E = sb.projParams.origin_data['eastings'][origin]
-                    orig_N = sb.projParams.origin_data['northings'][origin]
+                        orig_E = sb.projParams.origin_data['eastings'][origin]
+                        orig_N = sb.projParams.origin_data['northings'][origin]
 
-                    orig_pop = self.originPopData[origin]
+                        orig_pop = self.originPopData[origin]
 
-                    # if the pop is zero, though unlikely, we might as well stop (continue) here?
-                    #  test more later when using more destinations, appears to slow things down
-                    #if orig_pop == 0:
-                    #    continue
+                        # if the pop is zero, though unlikely, we might as well stop (continue) here?
+                        #  test more later when using more destinations, appears to slow things down
+                        #if orig_pop == 0:
+                        #    continue
 
-                    # pythagoras gives us the distance between origin and destination
-                    dist_sq = (dest_E - orig_E) ** 2 + (dest_N - orig_N) ** 2
+                        # pythagoras gives us the distance between origin and destination
+                        dist_sq = (dest_E - orig_E) ** 2 + (dest_N - orig_N) ** 2
 
-                    #logging.debug('      Orig ' + str(origin)
-                    #             + '. E: ' + str(orig_E) + ' N: ' + str(orig_N)
-                    #             + ' Pop: ' + str(round(orig_pop, 2))
-                    #             + ' distance: ' + str(round(dist, 2)))
+                        #logging.debug('      Orig ' + str(origin)
+                        #             + '. E: ' + str(orig_E) + ' N: ' + str(orig_N)
+                        #             + ' Pop: ' + str(round(orig_pop, 2))
+                        #             + ' distance: ' + str(round(dist, 2)))
 
-                    # which wad is this distance relevant to
-                    for wad in dest_WAD:
-                        if dist_sq <= wad[0]:  # within range
-                            wad[2] += orig_pop  # store the total origin population
-                            wad[3].append(origin)  # add the origin index to our list
-                            break
+                        # which wad is this distance relevant to
+                        for wad in dest_WAD:
+                            if dist_sq <= wad[0]:  # within range
+                                wad[2] += orig_pop  # store the total origin population
+                                wad[3].append(origin)  # add the origin index to our list
+                                break
 
                 # The dest wad is now fully populated with origin indexes and origin pop total
 

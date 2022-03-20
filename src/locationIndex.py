@@ -13,8 +13,8 @@ import logging
 # A class for indexing and caching candidate locations within an area
 #   These will later be checked using pythagoras, we are just cutting down the number to examine
 
-LOC_COLS=100
-LOC_ROWS=100
+LOC_COLS=200
+LOC_ROWS=200
 
 class LocationIndex:
 
@@ -73,9 +73,10 @@ class LocationIndex:
         logging.debug('      CACHE-NEW: {},{} {} {} '.format(Easting, Northing, Distance, bbstr))
 
         # add all stored grid locations from within the bounding box
+        #   use a list of lists to avoid overhead of constant appending
         loc_list = []
         for x, y in [(x, y) for x in range(X1, X2+1) for y in range(Y1, Y2+1)]:
-            loc_list.extend(self.loc_index[y][x])
+            loc_list.append(self.loc_index[y][x])
 
         # add to the cache and return it
         self.loc_cache[bbstr] = loc_list

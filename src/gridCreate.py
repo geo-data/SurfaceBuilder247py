@@ -92,9 +92,10 @@ class GridCreate:
                 logging.info('     {} Destinations'.format(row))
 
             largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
-            potential_background_vals = backgroundLocationIndex.possible_locations(E, N, largest_radius)
+            potential_background_vals_array = backgroundLocationIndex.possible_locations(E, N, largest_radius)
 
-            for bgcell in potential_background_vals:
+            for potential_background_vals in potential_background_vals_array:
+                for bgcell in potential_background_vals:
 
                     bg_E = sb.projParams.background_data['eastings'][bgcell]
                     bg_N = sb.projParams.background_data['northings'][bgcell]
@@ -180,15 +181,16 @@ class GridCreate:
             loc_E = locations['eastings'][loc]
             loc_N = locations['northings'][loc]
             LD = locations['LD'][loc]
-            possible_neighbours = locationIndex.possible_locations(loc_E, loc_N, LD)
+            possible_neighbours_array = locationIndex.possible_locations(loc_E, loc_N, LD)
             neighbours = []
-            for poss in possible_neighbours:
-                if poss != loc:  # not itself!
-                    poss_E = locations['eastings'][poss]
-                    poss_N = locations['northings'][poss]
-                    dist = math.sqrt((loc_E - poss_E) ** 2 + (loc_N - poss_N) ** 2)
-                    if dist <= LD:
-                        neighbours.append((poss_E, poss_N, dist))  # add a tuple to the lsit
+            for possible_neighbours in possible_neighbours_array:
+                for poss in possible_neighbours:
+                    if poss != loc:  # not itself!
+                        poss_E = locations['eastings'][poss]
+                        poss_N = locations['northings'][poss]
+                        dist = math.sqrt((loc_E - poss_E) ** 2 + (loc_N - poss_N) ** 2)
+                        if dist <= LD:
+                            neighbours.append((poss_E, poss_N, dist))  # add a tuple to the lsit
 
             #  2. Calculate AVI (Inter Centroid Distance)
             #       if none -> LDradius, if 1 -> distance, otherwise average distance
