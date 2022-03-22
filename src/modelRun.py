@@ -28,13 +28,11 @@ class ModelRun:
 
     def __init__(self, ageBand, runDate, runTime,
                  dest_sample_rate,
-                 orig_sample_rate,
-                 origin_reduce_function):
+                 orig_sample_rate):
 
         self.ageband = ageBand
         self.date = runDate
         self.time = runTime
-        self.origin_reduce_function = origin_reduce_function
 
         logging.info('  Age band (.modelRun.ageband): ' + str(self.ageband))
         logging.info('  Date     (.modelRun.date):    ' + str(self.date))
@@ -198,11 +196,6 @@ class ModelRun:
                 potential_origins_array = sb.projParams.originLocationIndex.possible_locations(dest_E, dest_N, largest_radius)
                 #logging.info('      Max radius: {:.3f} containing {} potential Origins'.format(largest_radius,
                 #                                                                               len(potential_origins_array)))
-
-                # apply potential origin reduction function here (note some origins might be outside the radius)
-                # not here, work in progress
-                #if self.origin_reduce_function is not None:
-                #    potential_origins = self.origin_reduce_function(potential_origins)
 
                 for potential_origins in potential_origins_array:
                     for origin in potential_origins:
@@ -517,7 +510,7 @@ class ModelRun:
 
             filename = sb.projDir + file_prefix + 'results.csv'
 
-            header = 'E, N, OriginLD, OriginImmob, Intravel, OnSite, Total\n'
+            header = 'E, N, OriginRemain, OriginImmob, Intravel, OnSite, Total\n'
             halfcell = int(sb.projParams.background_csize / 2)
 
             try:
@@ -555,7 +548,7 @@ class ModelRun:
 
             filename = sb.projDir + file_prefix + 'results_LD.csv'
 
-            header = 'E, N, OriginLD, OriginImmob, Intravel, OnSite, Total\n'
+            header = 'E, N, OriginRemain, OriginImmob, Intravel, OnSite, Total\n'
             halfcell = int(sb.projParams.background_csize / 2)
 
             try:

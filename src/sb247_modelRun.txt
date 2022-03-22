@@ -112,3 +112,20 @@ x	y	OriginLD	OriginImmob	Intravel	OnSite	Total
 
    # loop through each X, Y, grab the value in each of the 4 grids
    # Sum them into Total, if Total > 0 output a csv line to the results file
+
+
+# alternative inTravel grid (not successful)
+
+for each destination
+
+  loop through BB of largest wad
+    grab X,Y of BG grid, bg_val
+      if bg_val > 0
+        dist_sq = X,Y to dest(x,y)
+	loop through wads
+	  add (x,y) to wad list, increment wad total
+
+  loop though wads
+    dest bg total for wad
+      for each x,y in list for wad
+        inTrav(x,y) += inTrav * bg[x,y] / bg_total

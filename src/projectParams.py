@@ -180,16 +180,17 @@ class ProjectParams:
             self.background_data['bgval'] = []
 
             halfcell = int(self.aarea_csize / 2)
-            bg_histogram = {}
+            # bg_histogram = {}
             out_of_range = 0
 
             # Y, X  is row, col
             for (Y,X) in np.ndindex(self.background_array.shape):
                 val = self.background_array[Y,X]
-                if val not in bg_histogram.keys():
-                    bg_histogram[val] = 1
-                else:
-                    bg_histogram[val] += 1
+                # not being used, but uncomment if we would like a record of how many of each unique value:
+                #if val not in bg_histogram.keys():
+                #    bg_histogram[val] = 1
+                #else:
+                #    bg_histogram[val] += 1
 
                 # threshold for inclusion in list of relevant grid cells
                 #   if we use 0 this list is potentially huge
@@ -398,8 +399,8 @@ class ProjectParams:
                 for origin in range(len(self.origin_data['eastings'])):
                     orig_E = self.origin_data['eastings'][origin]
                     orig_N = self.origin_data['northings'][origin]
-                    orig_X = round((orig_E - self.background_bl_east) / csize)
-                    orig_Y = round((orig_N - self.background_bl_north) / csize)
+                    orig_X = int((orig_E - self.background_bl_east) / csize)
+                    orig_Y = int((orig_N - self.background_bl_north) / csize)
                     self.origin_data['XY'].append((orig_X, orig_Y))
 
                 logging.info('  Origin X,Y indexes (.projParams.origin_data[XY]): '
@@ -515,8 +516,8 @@ class ProjectParams:
                     for dest in range(len(dest_data['eastings'])):
                         dest_E = dest_data['eastings'][dest]
                         dest_N = dest_data['northings'][dest]
-                        dest_X = round((dest_E - self.background_bl_east) / csize)
-                        dest_Y = round((dest_N - self.background_bl_north) / csize)
+                        dest_X = int((dest_E - self.background_bl_east) / csize)
+                        dest_Y = int((dest_N - self.background_bl_north) / csize)
                         dest_data['XY'].append((dest_X, dest_Y))
 
                     logging.info('    X,Y indexes: '

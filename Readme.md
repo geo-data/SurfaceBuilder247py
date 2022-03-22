@@ -43,3 +43,12 @@ Unit tests (requires sample Data):
 
 ```docker run -it --rm --name sb2472py_docker -v "$PWD":/opt -w /opt sb247-docker:latest python ./unit_tests.py```
 
+### Using published Python package
+
+Package home at PyPI: https://pypi.org/project/SurfaceBuilder247/
+
+```pip install SurfaceBuilder247```
+
+In `Main.py`:
+
+```from SurfaceBuilder247 import SB247```
