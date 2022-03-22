@@ -7,8 +7,14 @@ v1.0 Jan-Mar 2022
 
 A Python (3.x and above) redevelopment of the original VB code.
 
+For information about the project visit http://pop247.geodata.soton.ac.uk/
+
 `src/` - sources files
 
+> `sb247_modelRun.txt` - Pseudocode descriptions of the algorithms implemented
+>
+> `sb247_python.md` - Documentation of the Python structure and code
+>
 > `main.py` - A sample main Python entry program
 > 
 > `sb247.py` - The main SB247 Class, the container for all functionality and data
@@ -21,7 +27,7 @@ A Python (3.x and above) redevelopment of the original VB code.
 > 
 > `gridCreate.py` - Create gridded data from model run outputs
 > 
-> `unit_tests.py`- Perform a series of validations (requires sample Data)
+> `unit_tests.py` - Perform a series of validations (requires sample Data)
 
 e.g. run:
 
