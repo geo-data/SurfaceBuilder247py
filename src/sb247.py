@@ -183,14 +183,12 @@ class SB247:
 
     def runSBModel(self, ageBand, runDate, runTime,
                    destination_sample_rate = 1,
-                   origin_sample_rate = 1,
-                   origin_reduce_function = None):
+                   origin_sample_rate = 1):
 
         logging.info(SPACER + 'Running the model...' + SPACER2)
 
         self.modelRun = ModelRun(ageBand, runDate, runTime,
-                                 destination_sample_rate, origin_sample_rate,
-                                 origin_reduce_function)
+                                 destination_sample_rate, origin_sample_rate)
 
         # sample_rate optional parameters are for testing model runs more quickly by sampling destinations / origins
         # not sensical for real data modelling
