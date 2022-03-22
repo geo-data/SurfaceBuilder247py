@@ -236,9 +236,9 @@ class MyTestCases(unittest.TestCase):
         ck3 = self.file_checksum(sb.projDir + 'Results/Unit_tests_origins_immob_LD.asc')[:16]
         ck4 = self.file_checksum(sb.projDir + 'Results/Unit_tests_origins_remain_LD.asc')[:16]
         ck5 = self.file_checksum(sb.projDir + 'Results/Unit_tests_results_LD.csv')[:16]
-        # print (ck1 + ck2 + ck3 + ck4 + ck5)
+        #print (ck1 + ck2 + ck3 + ck4 + ck5)
 
-        ckall = 'c68e4c91b2c93d5e9b878a2468f962c474ba30ae216ba442262e4de5dd47ccbf40d66efbe4a411de'
+        ckall = 'c68e4c91b2c93d5e8939efef7972d0db74ba30ae216ba442262e4de5dd47ccbf1352dba2860ede0e'
         msg = pre + 'Check all saved file checksums are as expected' + post
         assert ck1 + ck2 + ck3 + ck4 + ck5 == ckall, msg
 
