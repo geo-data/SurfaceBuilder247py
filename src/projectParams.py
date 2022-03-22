@@ -184,8 +184,8 @@ class ProjectParams:
             out_of_range = 0
 
             # Y, X  is row, col
-            for (Y,X) in np.ndindex(self.background_array.shape):
-                val = self.background_array[Y,X]
+            for (Y, X) in np.ndindex(self.background_array.shape):
+                val = self.background_array[Y, X]
                 # not being used, but uncomment if we would like a record of how many of each unique value:
                 #if val not in bg_histogram.keys():
                 #    bg_histogram[val] = 1

@@ -63,10 +63,10 @@ Once output data has been created by executing a model run, production
 of gridded outputs is implemented by the GridCreate Class, with
 methods to generate 2D (Numpy) arrays of:
 
-* raw outputs (remaining and immobile Origins, on-site Destinations);
+* raw outputs (remaining and immobile Origins, on-site Destinations)
 
 * in-travel Destinations, which are combined with the weighted
-background grid;
+background grid
 
 * Locally Dispersed outputs
 

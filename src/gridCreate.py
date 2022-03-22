@@ -176,8 +176,8 @@ class GridCreate:
                         poss_E = locations['eastings'][poss]
                         poss_N = locations['northings'][poss]
                         dist = math.sqrt((loc_E - poss_E) ** 2 + (loc_N - poss_N) ** 2)
-                        if dist <= LD:
-                            neighbours.append((poss_E, poss_N, dist))  # add a tuple to the lsit
+                        if dist > 0 and dist <= LD:
+                            neighbours.append((poss_E, poss_N, dist))  # add a tuple to the list
 
             #  2. Calculate AVI (Inter Centroid Distance)
             #       if none -> LDradius, if 1 -> distance, otherwise average distance
