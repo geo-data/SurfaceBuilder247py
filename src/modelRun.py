@@ -70,6 +70,9 @@ class ModelRun:
         originInitialPop = sum(self.originPopData)  # record initial total pop in this ageband
         destIncrease = 0  # (for checking) a record of how many dest pop transfers were made
 
+        fail_count = 0  # for reporting how many destinations couldn't be provided with all requested population
+        fail_total = 0  # and how much total population wasn't provided
+
         # create dictionary of arrays to store all of the destination data values needed (and their grid indexes)
         self.destination_data = {}
         self.destination_data['inTravel'] = []
@@ -321,18 +324,21 @@ class ModelRun:
                     logging.info('      Dest remove check SUCCESS: ' + str(round(dest_remove_check,3)))
                 else:
                     logging.info('      Dest remove check FAIL: ' + str(round(dest_remove_check, 3)))
+                    fail_count += 1
+                    fail_total += dest_remove_check
 
         originFinalPop = sum(self.originPopData)  # record initial total pop in this ageband
 
         logging.info('\n  Run Complete - Loop count: ' + str(loop_count)
                      + ' in ' + str(round(time.time() - initialTime,1)) + ' seconds')
 
-        logging.info('\n  Origin pop initial / final / diff: '
-                     + str(round(originInitialPop,3)) + ' / ' + str(round(originFinalPop,3))
-                     + ' / ' + str(round(originInitialPop - originFinalPop,3))
-                     + '\n  Dest pop requested: ' + str(round(destIncrease,3)))
+        logging.info('\n  Origin pop initial / final / diff: {} / {} / {}\n  Dest pop requested: {}'.format(
+            round(originInitialPop, 3), round(originFinalPop, 3),
+            round(originInitialPop - originFinalPop, 3), round(destIncrease, 3)))
 
-        # raise ValueError('sorry, not good')
+        if fail_count > 0:
+            logging.info('\n  {} unsatisfied destinations, {} requested'.format(fail_count, round(fail_total, 3)))
+
 
     def timeProfileLookup(self, sb, time_profile):
         # lookup a time profile for the required time, return a tuple of inTravel and onSite percents
