@@ -67,10 +67,10 @@ class LocationIndex:
         # encode BB as unique string for caching in the dictionary, eg. 2,3,15,19
         bbstr = '{},{},{},{}'.format(X1,X2,Y1,Y2)
         if bbstr in self.loc_cache:
-            logging.debug('      CACHE-IN: {},{} {} {} '.format(Easting, Northing, Distance, bbstr))
+            #logging.debug('      CACHE-IN: {},{} {} {} '.format(Easting, Northing, Distance, bbstr))
             return self.loc_cache[bbstr]
 
-        logging.debug('      CACHE-NEW: {},{} {} {} '.format(Easting, Northing, Distance, bbstr))
+        #logging.debug('      CACHE-NEW: {},{} {} {} '.format(Easting, Northing, Distance, bbstr))
 
         # add all stored grid locations from within the bounding box
         #   use a list of lists to avoid overhead of constant appending

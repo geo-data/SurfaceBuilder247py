@@ -323,9 +323,11 @@ class ModelRun:
                 if round(dest_req_pop,3) == round(dest_remove_check,3):
                     logging.info('      Dest remove check SUCCESS: ' + str(round(dest_remove_check,3)))
                 else:
-                    logging.info('      Dest remove check FAIL: ' + str(round(dest_remove_check, 3)))
+                    logging.info('      Dest remove check FAIL: {} removed, {} outstanding'.format(
+                        round(dest_remove_check, 3),
+                        round(dest_req_pop - dest_remove_check, 3)))
                     fail_count += 1
-                    fail_total += dest_remove_check
+                    fail_total += dest_req_pop - dest_remove_check
 
         originFinalPop = sum(self.originPopData)  # record initial total pop in this ageband
 
