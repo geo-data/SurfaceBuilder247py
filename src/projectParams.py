@@ -612,7 +612,8 @@ class ProjectParams:
                                  + str(dest_data['WAD'][0][0][0]) + ' '
                                  + str(dest_data['WAD'][0][0][1]))
 
-                    #create hashes for each destination's location and WAD string (so, once we have identified the origins/bgs)
+                    #create hashes for each destination's location and WAD string (so, once we have identified the origins/bgs, 
+                    # we can re-use them across destinations that share the same Easting/Northing/WAD)
                     dest_data["hash"] = []
                     for idx in range(len(dest_data['eastings'])):
                         dest_data["hash"].append(hashlib.md5("{}-{}-{}".format(dest_data['eastings'][idx], dest_data['northings'][idx], dest_data['wadStrings'][idx]).encode("utf-8")).hexdigest())
