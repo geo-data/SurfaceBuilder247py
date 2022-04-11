@@ -58,7 +58,8 @@ class GridCreate:
 
         grid = np.zeros((rows,cols))
 
-        bg_wad_cache = {}
+        cached_hash = None  #store the last hash and populated WAD
+        cached_WAD = None
 
         loop_count = 0
         lost_pop = 0
@@ -67,7 +68,10 @@ class GridCreate:
         logging.info('\n     Populating Background Location Index...')
         backgroundLocationIndex = LocationIndex(sb.projParams, sb.projParams.background_data)
 
-        for row in range(len(destination_data['inTravel'])):
+        #do dests in hash order, so we only need to keep the last used hash and WAD in memory
+        sorted_indices = np.argsort(destination_data['hash'])  
+
+        for row in sorted_indices:
             
             dest_hash = destination_data['hash'][row]
             E = destination_data['eastings'][row]
@@ -80,12 +84,12 @@ class GridCreate:
                 #    print('.', end='', flush=True)
                 logging.info('     {} Destinations'.format(row))
 
-            if (dest_hash in bg_wad_cache):
+            if (dest_hash == cached_hash):  
 
-                dest_WAD = bg_wad_cache[dest_hash]
+                dest_WAD = cached_WAD
                 logging.debug("Already processed a dest with an identical E/N/WAD - re-using found cells")
             else:
-
+                logging.debug(f"New E/N/WAD combo found - populating WAD with BG cells")
                 dest_WAD = copy.deepcopy(destination_data['WAD'][row])
                 # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty location list
 
@@ -112,7 +116,8 @@ class GridCreate:
                                 # otherwise it will get added to the next wad outward
                             loop_count += 1
 
-                bg_wad_cache[dest_hash] = dest_WAD
+                cached_hash = destination_data['hash'][row]
+                cached_WAD = dest_WAD
 
             # the dest wad is now fully populated with grid cell indexes and total amounts
             # loop through it again, spreading the dest inTravel pop into the relevant grid cells
