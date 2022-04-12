@@ -70,6 +70,7 @@ class GridCreate:
 
         #do dests in hash order, so we only need to keep the last used hash and WAD in memory
         sorted_indices = np.argsort(destination_data['hash'])  
+        row_count = 0
 
         for row in sorted_indices:
             
@@ -80,16 +81,16 @@ class GridCreate:
             dest_pop = destination_data['inTravel'][row]
             dest_pop_leftover = 0  # for storing pop amounts that have nowhere to go within a WAD
 
-            if row % 1000 == 0:
+            if row_count % 1000 == 0:
                 #    print('.', end='', flush=True)
-                logging.info('     {} Destinations'.format(row))
+                logging.info('     {} Destinations'.format(row_count))
 
             if (dest_hash == cached_hash):  
 
                 dest_WAD = cached_WAD
                 logging.debug("Already processed a dest with an identical E/N/WAD - re-using found cells")
             else:
-                logging.debug(f"New E/N/WAD combo found - populating WAD with BG cells")
+                logging.debug("New E/N/WAD combo found - populating WAD with BG cells")
                 dest_WAD = copy.deepcopy(destination_data['WAD'][row])
                 # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty location list
 
@@ -152,8 +153,10 @@ class GridCreate:
 
             if dest_pop_leftover > 0:
                 # we've been through all of our WADs and there is still undistributed population (hopefully unlikely)
-                logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
+                #logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
                 lost_pop += dest_pop_leftover
+            
+            row_count+= 1
 
         logging.info('\n     created - Loop count: {} in {} seconds'.format(loop_count,
                                                                             round(time.time() - initialTime, 1)))
