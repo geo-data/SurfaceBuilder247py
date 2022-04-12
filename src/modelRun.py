@@ -81,7 +81,9 @@ class ModelRun:
         self.destination_data['northings'] = []  # list of Eastings
         self.destination_data['XY'] = []
         self.destination_data['WAD'] = []
+        self.destination_data['wadStrings'] = []
         self.destination_data['LD'] = []
+        self.destination_data['hash'] = []
 
         for destdata in sb.projParams.destination_data:
 
@@ -136,7 +138,9 @@ class ModelRun:
                 self.destination_data['northings'].append(dest_N)
                 self.destination_data['XY'].append(destdata['XY'][dest])
                 self.destination_data['WAD'].append(destdata['WAD'][dest])
+                self.destination_data['wadStrings'].append(destdata['wadStrings'][dest])
                 self.destination_data['LD'].append(destdata['LD'][dest])
+                self.destination_data["hash"].append(destdata['hash'][dest])                
 
                 logging.info('\n    Dest ' + str(dest)
                              + '. E: ' + str(dest_E) + ' N: ' + str(dest_N)

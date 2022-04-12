@@ -64,10 +64,11 @@ def main():
 
         # Load the Background from an Ascii grid file
         #   Optional threshold parameter selection of lowest value to use for inTravel dispersion
-        #   0 includes all data, 0.0001 should make virtually no difference but speed things up for large areas
+        #   0 includes all data, 0.0001 will speed things up for large areas, but can cause problems with dispersing population
+        #    in areas with few transport links
 
         sb.loadBackgroundFromFile('BckGrnds/' + sb.projParams.background,
-                                  threshold = 0.0001)
+                                  threshold = 0)
 
         # Load the origin csv, get max/min coords
 

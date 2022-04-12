@@ -11,6 +11,7 @@
 import logging
 import datetime
 import math
+import hashlib
 
 # Import additional modules (which will need to be installed)
 
@@ -590,14 +591,18 @@ class ProjectParams:
                         else:
                             dest_data['LD'].append(def_LD)
 
-                    # read in the WAD data
+                    # read in the WAD data (saving the raw strings to keep for hashing and caching)
+                    dest_data["wadStrings"] = []
                     wads = []
+
                     wad_default = def_WAD.split('|')
                     for val in csvData.iloc[:, col_WAD - 1].to_list():
                         if not val:
                             wads.append(wad_default)
+                            dest_data['wadStrings'].append(def_WAD)
                         else:
                             wads.append(val.split('|'))
+                            dest_data['wadStrings'].append(val)
 
                     dest_data['WAD'] = self.convertWADs(wads)
 
@@ -606,6 +611,12 @@ class ProjectParams:
                                  + str(dest_data['WAD'][0][0]) + ' '
                                  + str(dest_data['WAD'][0][0][0]) + ' '
                                  + str(dest_data['WAD'][0][0][1]))
+
+                    #create hashes for each destination's location and WAD string (so, once we have identified the origins/bgs, 
+                    # we can re-use them across destinations that share the same Easting/Northing/WAD)
+                    dest_data["hash"] = []
+                    for idx in range(len(dest_data['eastings'])):
+                        dest_data["hash"].append(hashlib.md5("{}-{}-{}".format(dest_data['eastings'][idx], dest_data['northings'][idx], dest_data['wadStrings'][idx]).encode("utf-8")).hexdigest())
 
                     # read in the Major Flows data
                     major_flows = csvData.iloc[:, min(col_MajorFlowCols) - 1:max(col_MajorFlowCols)]

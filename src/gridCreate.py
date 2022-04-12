@@ -58,6 +58,9 @@ class GridCreate:
 
         grid = np.zeros((rows,cols))
 
+        cached_hash = None  #store the last hash and populated WAD
+        cached_WAD = None
+
         loop_count = 0
         lost_pop = 0
         initialTime = time.time()
@@ -65,40 +68,57 @@ class GridCreate:
         logging.info('\n     Populating Background Location Index...')
         backgroundLocationIndex = LocationIndex(sb.projParams, sb.projParams.background_data)
 
-        for row in range(len(destination_data['inTravel'])):
+        #do dests in hash order, so we only need to keep the last used hash and WAD in memory
+        sorted_indices = np.argsort(destination_data['hash'])  
+        row_count = 0
+
+        for row in sorted_indices:
+            
+            dest_hash = destination_data['hash'][row]
             E = destination_data['eastings'][row]
             N = destination_data['northings'][row]
-            dest_WAD = copy.deepcopy(destination_data['WAD'][row])
-            # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty location list
+
             dest_pop = destination_data['inTravel'][row]
             dest_pop_leftover = 0  # for storing pop amounts that have nowhere to go within a WAD
 
-            if row % 1000 == 0:
+            if row_count % 1000 == 0:
                 #    print('.', end='', flush=True)
-                logging.info('     {} Destinations'.format(row))
+                logging.info('     {} Destinations'.format(row_count))
 
-            largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
-            potential_background_vals_array = backgroundLocationIndex.possible_locations(E, N, largest_radius)
+            if (dest_hash == cached_hash):  
 
-            for potential_background_vals in potential_background_vals_array:
-                for bgcell in potential_background_vals:
+                dest_WAD = cached_WAD
+                logging.debug("Already processed a dest with an identical E/N/WAD - re-using found cells")
+            else:
+                logging.debug("New E/N/WAD combo found - populating WAD with BG cells")
+                dest_WAD = copy.deepcopy(destination_data['WAD'][row])
+                # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty location list
 
-                    bg_E = sb.projParams.background_data['eastings'][bgcell]
-                    bg_N = sb.projParams.background_data['northings'][bgcell]
-                    bg_val = sb.projParams.background_data['bgval'][bgcell]
+                largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
+                potential_background_vals_array = backgroundLocationIndex.possible_locations(E, N, largest_radius)
 
-                    # pythagoras gives us the distance between origin and destination
-                    dist_sq = (bg_E - E) ** 2 + (bg_N - N) ** 2
+                for potential_background_vals in potential_background_vals_array:
+                    for bgcell in potential_background_vals:
 
-                    # which wad is this distance relevant to
-                    for wad in dest_WAD:
-                        if dist_sq <= wad[0]:  # within range
-                            if wad[1] > 0:  # any data (pc > 0) to be held in here at all
-                                wad[2] += bg_val  # store the total origin population
-                                wad[3].append(bgcell)  # add the background index to our list
-                                break
-                            # otherwise it will get added to the next wad outward
-                        loop_count += 1
+                        bg_E = sb.projParams.background_data['eastings'][bgcell]
+                        bg_N = sb.projParams.background_data['northings'][bgcell]
+                        bg_val = sb.projParams.background_data['bgval'][bgcell]
+
+                        # pythagoras gives us the distance between origin and destination
+                        dist_sq = (bg_E - E) ** 2 + (bg_N - N) ** 2
+
+                        # which wad is this distance relevant to
+                        for wad in dest_WAD:
+                            if dist_sq <= wad[0]:  # within range
+                                if wad[1] > 0:  # any data (pc > 0) to be held in here at all
+                                    wad[2] += bg_val  # store the total origin population
+                                    wad[3].append(bgcell)  # add the background index to our list
+                                    break
+                                # otherwise it will get added to the next wad outward
+                            loop_count += 1
+
+                cached_hash = destination_data['hash'][row]
+                cached_WAD = dest_WAD
 
             # the dest wad is now fully populated with grid cell indexes and total amounts
             # loop through it again, spreading the dest inTravel pop into the relevant grid cells
@@ -135,6 +155,8 @@ class GridCreate:
                 # we've been through all of our WADs and there is still undistributed population (hopefully unlikely)
                 logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
                 lost_pop += dest_pop_leftover
+            
+            row_count+= 1
 
         logging.info('\n     created - Loop count: {} in {} seconds'.format(loop_count,
                                                                             round(time.time() - initialTime, 1)))
