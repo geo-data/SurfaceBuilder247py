@@ -153,7 +153,7 @@ class GridCreate:
 
             if dest_pop_leftover > 0:
                 # we've been through all of our WADs and there is still undistributed population (hopefully unlikely)
-                #logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
+                logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
                 lost_pop += dest_pop_leftover
             
             row_count+= 1
