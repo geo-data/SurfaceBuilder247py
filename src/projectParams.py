@@ -597,7 +597,7 @@ class ProjectParams:
 
                     wad_default = def_WAD.split('|')
                     for val in csvData.iloc[:, col_WAD - 1].to_list():
-                        if not val:
+                        if not isinstance(val, str):
                             wads.append(wad_default)
                             dest_data['wadStrings'].append(def_WAD)
                         else:
