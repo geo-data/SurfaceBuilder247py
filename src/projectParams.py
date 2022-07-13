@@ -607,7 +607,7 @@ class ProjectParams:
                     dest_data['WAD'] = self.convertWADs(wads)
 
                     logging.info('    WADs: ' + str(dest_data['WAD'][0:5]))
-                    if len(dest_data["'WAD"] > 0):
+                    if len(dest_data["WAD"]) > 0:
                         logging.info('      First tuple/radius/percent: '
                                      + str(dest_data['WAD'][0][0]) + ' '
                                      + str(dest_data['WAD'][0][0][0]) + ' '
