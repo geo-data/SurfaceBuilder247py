@@ -607,10 +607,11 @@ class ProjectParams:
                     dest_data['WAD'] = self.convertWADs(wads)
 
                     logging.info('    WADs: ' + str(dest_data['WAD'][0:5]))
-                    logging.info('      First tuple/radius/percent: '
-                                 + str(dest_data['WAD'][0][0]) + ' '
-                                 + str(dest_data['WAD'][0][0][0]) + ' '
-                                 + str(dest_data['WAD'][0][0][1]))
+                    if len(dest_data["'WAD"] > 0):
+                        logging.info('      First tuple/radius/percent: '
+                                     + str(dest_data['WAD'][0][0]) + ' '
+                                     + str(dest_data['WAD'][0][0][0]) + ' '
+                                     + str(dest_data['WAD'][0][0][1]))
 
                     #create hashes for each destination's location and WAD string (so, once we have identified the origins/bgs, 
                     # we can re-use them across destinations that share the same Easting/Northing/WAD)
