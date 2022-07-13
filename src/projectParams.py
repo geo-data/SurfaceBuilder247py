@@ -268,12 +268,12 @@ class ProjectParams:
         logging.info('  TS Last key/category/time/weight: ' + ts_key + ' ' + category + ' '
                      + str(timekey) + ' ' + str(self.timeseries_data[ts_key][category][timekey]))
 
-    def loadOrigin(self, filename):
+    def loadOrigin(self, filename, encoding="utf-8"):
         try:
 
             with open(filename, 'r') as file_opened:
 
-                header = pd.read_csv(filename, index_col=False, header=None, nrows=23)
+                header = pd.read_csv(filename, index_col=False, header=None, nrows=23, encoding=encoding)
 
                 # identify locations of various data columns and their defaults
                 col_DataStart = int(header.iloc[3, 1])  # Start row of data
@@ -302,7 +302,7 @@ class ProjectParams:
 
                 # create a Pandas dataframe and miss out the specified header
 
-                origin_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False)
+                origin_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False, encoding=encoding)
 
                 # filter the data to within the Study area
                 # note that we include (>=) BL, and exclude (<) TR to avoid overflow
@@ -434,7 +434,7 @@ class ProjectParams:
         except IOError as e:
             logging.error(e)
 
-    def loadDestFiles(self, pathname):
+    def loadDestFiles(self, pathname, encoding="utf-8"):
 
         self.destination_data = []  # array of each destination dictionary
         total_rows = 0
@@ -450,7 +450,7 @@ class ProjectParams:
                     dest_data = {}  # empty dictionary to hold destination data
                     dest_data['Filename'] = dest_file
 
-                    header = pd.read_csv(filename, index_col=False, header=None, nrows=23)
+                    header = pd.read_csv(filename, index_col=False, header=None, nrows=23, encoding=encoding)
 
                     # identify locations of various data columns and their defaults
                     col_DataStart = int(header.iloc[3, 1])  # Start row of data
@@ -485,7 +485,7 @@ class ProjectParams:
 
                     # create a Pandas dataframe and miss out the specified header
 
-                    dest_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False)
+                    dest_df = pd.read_csv(filename, header=[col_DataStart-1], nrows=col_DataRows, low_memory=False, encoding=encoding)
 
                     # filter the data to within the Study area
                     # note that we include (>=) BL, and exclude (<) TR to avoid overflow

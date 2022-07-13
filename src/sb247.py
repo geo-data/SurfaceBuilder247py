@@ -166,20 +166,20 @@ class SB247:
 
         self.projParams.loadTimeSeries(self.projDir + filename)
 
-    def loadOriginFromFile(self, filename):
+    def loadOriginFromFile(self, filename, encoding="utf-8"):
 
         logging.info(SPACER + 'Loading Origin data from file: ' + self.projDir + filename + ' ...' + SPACER2)
 
-        self.projParams.loadOrigin(self.projDir + filename)
+        self.projParams.loadOrigin(self.projDir + filename, encoding=encoding)
 
-    def loadDestinationData(self, pathname):
+    def loadDestinationData(self, pathname, encoding="utf-8"):
 
         logging.info(SPACER + 'Loading Destination data...' + SPACER2)
 
         if pathname.endswith('/'):
-            self.projParams.loadDestFiles(self.projDir + pathname)
+            self.projParams.loadDestFiles(self.projDir + pathname, encoding=encoding)
         else:
-            self.projParams.loadDestFiles(self.projDir + pathname + '/')
+            self.projParams.loadDestFiles(self.projDir + pathname + '/', encoding=encoding)
 
     def runSBModel(self, ageBand, runDate, runTime,
                    destination_sample_rate = 1,
