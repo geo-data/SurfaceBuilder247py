@@ -15,6 +15,7 @@ import unittest
 import datetime
 import hashlib
 import os
+import glob
 
 from sb247 import SB247
 
@@ -243,11 +244,10 @@ class MyTestCases(unittest.TestCase):
         assert ck1 + ck2 + ck3 + ck4 + ck5 == ckall, msg
 
         # remove the files
-        os.remove(sb.projDir + 'Results/Unit_tests_dest_inTravel.asc')
-        os.remove(sb.projDir + 'Results/Unit_tests_dest_onSite_LD.asc')
-        os.remove(sb.projDir + 'Results/Unit_tests_origins_immob_LD.asc')
-        os.remove(sb.projDir + 'Results/Unit_tests_origins_remain_LD.asc')
-        os.remove(sb.projDir + 'Results/Unit_tests_results_LD.csv')
+
+        for unit_test_file in glob.glob(sb.projDir + 'Results/Unit_tests*.*'):
+            os.remove(unit_test_file)
+
 
     def file_checksum(self, filename):
         try:

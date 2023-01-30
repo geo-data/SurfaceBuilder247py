@@ -38,7 +38,7 @@ def main():
 
         proj_dict = {
             'analysisarray': [373000, 160000, 40, 40, 200],  # BL_E, BL_N, nrows, ncols, cellsize
-            'buffer': 8000,
+            'buffer': 80000,
             'background': 'rastp6_monfri_10_16_2011.txt',
             'timeseries': 'TimeSeries.xls',
             'origin': 'Origin_Eng_OTT_2011.csv',

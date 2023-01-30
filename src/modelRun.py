@@ -14,6 +14,7 @@ import time
 import math
 import numpy as np
 import copy
+import itertools
 
 from locationIndex import LocationIndex
 from gridCreate import GridCreate
@@ -74,18 +75,22 @@ class ModelRun:
         fail_total = 0  # and how much total population wasn't provided
 
         # create dictionary of arrays to store all of the destination data values needed (and their grid indexes)
-        self.destination_data = {}
-        self.destination_data['inTravel'] = []
-        self.destination_data['onSite'] = []
-        self.destination_data['eastings'] = []  # list of Eastings
-        self.destination_data['northings'] = []  # list of Eastings
-        self.destination_data['XY'] = []
-        self.destination_data['WAD'] = []
-        self.destination_data['wadStrings'] = []
-        self.destination_data['LD'] = []
-        self.destination_data['hash'] = []
+        # create a list of dictionaries for each destination file containing all the information for each destination
+        self.destination_data_array = {}
+
 
         for destdata in sb.projParams.destination_data:
+
+            destination_data = {}
+            destination_data['inTravel'] = []
+            destination_data['onSite'] = []
+            destination_data['eastings'] = []  # list of Eastings
+            destination_data['northings'] = []  # list of Eastings
+            destination_data['XY'] = []
+            destination_data['WAD'] = []
+            destination_data['wadStrings'] = []
+            destination_data['LD'] = []
+            destination_data['hash'] = []
 
             logging.info('\n  New destination collection (' + destdata['Filename'] + ') ...')
 
@@ -132,15 +137,15 @@ class ModelRun:
                 dest_N = destdata['northings'][dest]
 
                 # save values and grid index for our output grids
-                self.destination_data['inTravel'].append(dest_inTravel_pop)
-                self.destination_data['onSite'].append(dest_onSite_pop)
-                self.destination_data['eastings'].append(dest_E)
-                self.destination_data['northings'].append(dest_N)
-                self.destination_data['XY'].append(destdata['XY'][dest])
-                self.destination_data['WAD'].append(destdata['WAD'][dest])
-                self.destination_data['wadStrings'].append(destdata['wadStrings'][dest])
-                self.destination_data['LD'].append(destdata['LD'][dest])
-                self.destination_data["hash"].append(destdata['hash'][dest])                
+                destination_data['inTravel'].append(dest_inTravel_pop)
+                destination_data['onSite'].append(dest_onSite_pop)
+                destination_data['eastings'].append(dest_E)
+                destination_data['northings'].append(dest_N)
+                destination_data['XY'].append(destdata['XY'][dest])
+                destination_data['WAD'].append(destdata['WAD'][dest])
+                destination_data['wadStrings'].append(destdata['wadStrings'][dest])
+                destination_data['LD'].append(destdata['LD'][dest])
+                destination_data["hash"].append(destdata['hash'][dest])                
 
                 logging.info('\n    Dest ' + str(dest)
                              + '. E: ' + str(dest_E) + ' N: ' + str(dest_N)
@@ -333,6 +338,8 @@ class ModelRun:
                     fail_count += 1
                     fail_total += dest_req_pop - dest_remove_check
 
+            #save the destination_data dict to the by-dest file dict
+            self.destination_data_array[destdata['Filename']] = destination_data
         originFinalPop = sum(self.originPopData)  # record initial total pop in this ageband
 
         logging.info('\n  Run Complete - Loop count: ' + str(loop_count)
@@ -345,6 +352,21 @@ class ModelRun:
         if fail_count > 0:
             logging.info('\n  {} unsatisfied destinations, {} requested'.format(fail_count, round(fail_total, 3)))
 
+    def concatenateDestinationDataArrays(self, destdata_dict):
+
+        concat_dict = {}
+
+        #get all the array namess that should be in a destdata dict from the first one
+        array_names = destdata_dict[next(iter(destdata_dict))].keys()
+
+        #and combine all of the versions of each of them them into one list and put it
+        # in the dict
+        for array_name in array_names:
+
+            list_of_lists = [destdata_dict[filename][array_name] for filename in destdata_dict]
+            concat_dict[array_name] = list(itertools.chain(*list_of_lists))
+
+        return concat_dict
 
     def timeProfileLookup(self, sb, time_profile):
         # lookup a time profile for the required time, return a tuple of inTravel and onSite percents
@@ -433,10 +455,32 @@ class ModelRun:
                                                                 self.originPopData, sb.projParams.originLocationIndex,
                                                                 cressman_power)
 
-        logging.info('\n   Destinations inTravel (.modelRun.grid_dest_inTravel)...')
-        self.grid_dest_inTravel = gridCreator.createGrid_inTravel(sb, self.destination_data)
+
+        self.destination_file_grids = {}
+        self.destination_file_grids_LD = {}
+        for destination_file in self.destination_data_array:
+
+            destination_data_partial = self.destination_data_array[destination_file]
+
+            logging.info(f'\n   Populating Destination Location Index for {destination_file}...')
+            destinationLocationIndex_partial = LocationIndex(sb.projParams, destination_data_partial) 
+            
+            logging.info(f'\n   Destinations onSite {destination_file}   (.modelRun.grid_dest_onSite)...')
+            if create_non_LD:
+                self.destination_file_grids[destination_file] = gridCreator.createGrid(rows, cols,
+                                                            destination_data_partial['XY'], destination_data_partial['onSite'])
+            else:
+                self.grid_dest_onSite = None
+
+            self.destination_file_grids_LD[destination_file] = gridCreator.createGrid_LD(sb, destination_data_partial,
+                                                                    destination_data_partial['onSite'],
+                                                                    destinationLocationIndex_partial,
+                                                                    cressman_power)
 
         # create an index for quick access to Destination locations
+
+        self.destination_data = self.concatenateDestinationDataArrays(self.destination_data_array)
+
         logging.info('\n   Populating Destination Location Index...')
         destinationLocationIndex = LocationIndex(sb.projParams, self.destination_data)
 
@@ -451,6 +495,10 @@ class ModelRun:
                                                              self.destination_data['onSite'],
                                                              destinationLocationIndex,
                                                              cressman_power)
+
+        logging.info('\n   Destinations inTravel (.modelRun.grid_dest_inTravel)...')
+        self.grid_dest_inTravel = gridCreator.createGrid_inTravel(sb, self.destination_data)
+
 
     def saveGridData(self, sb, file_prefix):
 
@@ -500,6 +548,25 @@ class ModelRun:
             filename = sb.projDir + file_prefix + 'dest_inTravel.asc'
             np.savetxt(filename, np.flipud(self.grid_dest_inTravel), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
+
+        for dest_filename, destination_grid in self.destination_file_grids.items():
+
+            destination_grid_filename = dest_filename.split(".")[0] # remove the csv part of the filename
+            if destination_grid is not None:
+                destination_grid = destination_grid[start_row:end_row, start_col:end_col]
+                filename = sb.projDir + file_prefix + f'{destination_grid_filename}.asc'
+                np.savetxt(filename, np.flipud(destination_grid), fmt='%.4f', comments='', header=header)
+                logging.info('   Written: ' + filename)
+
+        for dest_filename, destination_grid_LD in self.destination_file_grids_LD.items():
+            
+            destination_grid_filename = dest_filename.split(".")[0] # remove the csv part of the filename            
+            if destination_grid_LD is not None:
+                self.destination_grid_LD = destination_grid_LD[start_row:end_row, start_col:end_col]
+                filename = sb.projDir + file_prefix + f'{destination_grid_filename}_LD.asc'
+                np.savetxt(filename, np.flipud(destination_grid_LD), fmt='%.4f', comments='', header=header)
+                logging.info('   Written: ' + filename)
+
 
         if self.grid_dest_onSite is not None:
             self.grid_dest_onSite = self.grid_dest_onSite[start_row:end_row, start_col:end_col]
