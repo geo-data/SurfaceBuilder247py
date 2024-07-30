@@ -18,6 +18,9 @@ import hashlib
 import numpy as np
 import pandas as pd
 
+# Comment out this line if you use an ancient version of Pandas (items replaces iteritems)
+pd.DataFrame.iteritems = pd.DataFrame.items
+
 from locationIndex import LocationIndex
 
 

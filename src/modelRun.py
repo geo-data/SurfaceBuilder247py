@@ -500,7 +500,7 @@ class ModelRun:
         self.grid_dest_inTravel = gridCreator.createGrid_inTravel(sb, self.destination_data)
 
 
-    def saveGridData(self, sb, file_prefix):
+    def saveGridData(self, sb, file_prefix, save_destination_file_grids):
 
         # Save grid data to files, including option for both Locally Dispersed
         #   and not dispersed (probably never wanted, just for comparison)
@@ -549,23 +549,24 @@ class ModelRun:
             np.savetxt(filename, np.flipud(self.grid_dest_inTravel), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
-        for dest_filename, destination_grid in self.destination_file_grids.items():
+        if save_destination_file_grids:
+            for dest_filename, destination_grid in self.destination_file_grids.items():
 
-            destination_grid_filename = dest_filename.split(".")[0] # remove the csv part of the filename
-            if destination_grid is not None:
-                destination_grid = destination_grid[start_row:end_row, start_col:end_col]
-                filename = sb.projDir + file_prefix + f'{destination_grid_filename}.asc'
-                np.savetxt(filename, np.flipud(destination_grid), fmt='%.4f', comments='', header=header)
-                logging.info('   Written: ' + filename)
+                destination_grid_filename = dest_filename.split(".")[0] # remove the csv part of the filename
+                if destination_grid is not None:
+                    destination_grid = destination_grid[start_row:end_row, start_col:end_col]
+                    filename = sb.projDir + file_prefix + f'{destination_grid_filename}.asc'
+                    np.savetxt(filename, np.flipud(destination_grid), fmt='%.4f', comments='', header=header)
+                    logging.info('   Written: ' + filename)
 
-        for dest_filename, destination_grid_LD in self.destination_file_grids_LD.items():
-            
-            destination_grid_filename = dest_filename.split(".")[0] # remove the csv part of the filename            
-            if destination_grid_LD is not None:
-                self.destination_grid_LD = destination_grid_LD[start_row:end_row, start_col:end_col]
-                filename = sb.projDir + file_prefix + f'{destination_grid_filename}_LD.asc'
-                np.savetxt(filename, np.flipud(destination_grid_LD), fmt='%.4f', comments='', header=header)
-                logging.info('   Written: ' + filename)
+            for dest_filename, destination_grid_LD in self.destination_file_grids_LD.items():
+
+                destination_grid_filename = dest_filename.split(".")[0] # remove the csv part of the filename
+                if destination_grid_LD is not None:
+                    self.destination_grid_LD = destination_grid_LD[start_row:end_row, start_col:end_col]
+                    filename = sb.projDir + file_prefix + f'{destination_grid_filename}_LD.asc'
+                    np.savetxt(filename, np.flipud(destination_grid_LD), fmt='%.4f', comments='', header=header)
+                    logging.info('   Written: ' + filename)
 
 
         if self.grid_dest_onSite is not None:
@@ -578,6 +579,34 @@ class ModelRun:
             self.grid_dest_onSite_LD = self.grid_dest_onSite_LD[start_row:end_row, start_col:end_col]
             filename = sb.projDir + file_prefix + 'dest_onSite_LD.asc'
             np.savetxt(filename, np.flipud(self.grid_dest_onSite_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+
+        # save origin_all files (sum the component grids here)
+        if self.grid_origins_remain is not None and self.grid_origins_immob is not None:
+            grid_origins_all = self.grid_origins_remain + self.grid_origins_immob
+            filename = sb.projDir + file_prefix + 'origins_all.asc'
+            np.savetxt(filename, np.flipud(grid_origins_all), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+
+        if self.grid_origins_remain_LD is not None and self.grid_origins_immob_LD is not None:
+            grid_origins_all_LD = self.grid_origins_remain_LD + self.grid_origins_immob_LD
+            filename = sb.projDir + file_prefix + 'origins_all_LD.asc'
+            np.savetxt(filename, np.flipud(grid_origins_all_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+
+        # save totals files (sum the component grids here)
+        if self.grid_origins_remain is not None and self.grid_origins_immob is not None \
+                and self.grid_dest_onSite is not None and self.grid_dest_inTravel is not None:
+            grid_total = grid_origins_all + self.grid_dest_onSite + self.grid_dest_inTravel
+            filename = sb.projDir + file_prefix + 'total.asc'
+            np.savetxt(filename, np.flipud(grid_total), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+
+        if self.grid_origins_remain_LD is not None and self.grid_origins_immob_LD is not None \
+                and self.grid_dest_onSite_LD is not None and self.grid_dest_inTravel is not None:
+            grid_total_LD = grid_origins_all_LD + self.grid_dest_onSite_LD + self.grid_dest_inTravel
+            filename = sb.projDir + file_prefix + 'total_LD.asc'
+            np.savetxt(filename, np.flipud(grid_total_LD), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
 
     def saveCSVData(self, sb, file_prefix):

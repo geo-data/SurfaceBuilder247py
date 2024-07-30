@@ -203,13 +203,14 @@ class SB247:
 
         self.modelRun.createGridData(self, create_non_LD, cressman_power)
 
-    def saveOutputData(self, file_prefix):
+    def saveOutputData(self, file_prefix, save_CSV_files = False, save_destination_file_grids = False):
 
         logging.info(SPACER + 'Saving grid data to files...' + SPACER2)
 
-        self.modelRun.saveGridData(self, file_prefix)
+        self.modelRun.saveGridData(self, file_prefix, save_destination_file_grids)
 
-        self.modelRun.saveCSVData(self, file_prefix)
+        if save_CSV_files:
+            self.modelRun.saveCSVData(self, file_prefix)
 
         logging.info('\n  Model Data Saved.')
 

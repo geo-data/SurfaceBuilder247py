@@ -111,7 +111,7 @@ def main():
                                                                           str(run_time.hour),
                                                                           str(run_time.minute))
 
-        sb.saveOutputData(file_prefix)
+        sb.saveOutputData(file_prefix, save_CSV_files = False, save_destination_file_grids = False)
 
         logging.info('\nRun successful.')
         exit(0)

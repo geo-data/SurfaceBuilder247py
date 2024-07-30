@@ -230,7 +230,7 @@ class MyTestCases(unittest.TestCase):
 
         print("test_8_save_data: Save and check output data")
 
-        sb.saveOutputData('Results/Unit_tests_')
+        sb.saveOutputData('Results/Unit_tests_', save_CSV_files = True)
 
         ck1 = self.file_checksum(sb.projDir + 'Results/Unit_tests_dest_inTravel.asc')[:16]
         ck2 = self.file_checksum(sb.projDir + 'Results/Unit_tests_dest_onSite_LD.asc')[:16]
