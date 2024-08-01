@@ -214,3 +214,16 @@ class SB247:
 
         logging.info('\n  Model Data Saved.')
 
+    def aggregateOutputData(self):
+
+        logging.info(SPACER + 'Aggregating grid data from model outputs...' + SPACER2)
+
+        self.modelRun.aggregateOutputData(self)
+
+    def saveAggregatedOutputData(self, file_prefix):
+
+        logging.info(SPACER + 'Saving aggregated grid data to files...' + SPACER2)
+
+        self.modelRun.saveAggregatedOutputData(self, file_prefix)
+
+        logging.info('\n  Aggregated Model Data Saved.')

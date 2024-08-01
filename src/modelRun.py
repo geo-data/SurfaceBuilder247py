@@ -563,7 +563,7 @@ class ModelRun:
 
                 destination_grid_filename = dest_filename.split(".")[0] # remove the csv part of the filename
                 if destination_grid_LD is not None:
-                    self.destination_grid_LD = destination_grid_LD[start_row:end_row, start_col:end_col]
+                    destination_grid_LD = destination_grid_LD[start_row:end_row, start_col:end_col]
                     filename = sb.projDir + file_prefix + f'{destination_grid_filename}_LD.asc'
                     np.savetxt(filename, np.flipud(destination_grid_LD), fmt='%.4f', comments='', header=header)
                     logging.info('   Written: ' + filename)
@@ -583,31 +583,110 @@ class ModelRun:
 
         # save origin_all files (sum the component grids here)
         if self.grid_origins_remain is not None and self.grid_origins_immob is not None:
-            grid_origins_all = self.grid_origins_remain + self.grid_origins_immob
+            self.grid_origins_all = self.grid_origins_remain + self.grid_origins_immob
             filename = sb.projDir + file_prefix + 'origins_all.asc'
-            np.savetxt(filename, np.flipud(grid_origins_all), fmt='%.4f', comments='', header=header)
+            np.savetxt(filename, np.flipud(self.grid_origins_all), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
+        else:
+            self.grid_origins_all = None
 
         if self.grid_origins_remain_LD is not None and self.grid_origins_immob_LD is not None:
-            grid_origins_all_LD = self.grid_origins_remain_LD + self.grid_origins_immob_LD
+            self.grid_origins_all_LD = self.grid_origins_remain_LD + self.grid_origins_immob_LD
             filename = sb.projDir + file_prefix + 'origins_all_LD.asc'
-            np.savetxt(filename, np.flipud(grid_origins_all_LD), fmt='%.4f', comments='', header=header)
+            np.savetxt(filename, np.flipud(self.grid_origins_all_LD), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
+        else:
+            self.grid_origins_all_LD = None
 
         # save totals files (sum the component grids here)
         if self.grid_origins_remain is not None and self.grid_origins_immob is not None \
                 and self.grid_dest_onSite is not None and self.grid_dest_inTravel is not None:
-            grid_total = grid_origins_all + self.grid_dest_onSite + self.grid_dest_inTravel
+            self.grid_total = self.grid_origins_all + self.grid_dest_onSite + self.grid_dest_inTravel
             filename = sb.projDir + file_prefix + 'total.asc'
-            np.savetxt(filename, np.flipud(grid_total), fmt='%.4f', comments='', header=header)
+            np.savetxt(filename, np.flipud(self.grid_total), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
+        else:
+            self.grid_total = None
 
         if self.grid_origins_remain_LD is not None and self.grid_origins_immob_LD is not None \
                 and self.grid_dest_onSite_LD is not None and self.grid_dest_inTravel is not None:
-            grid_total_LD = grid_origins_all_LD + self.grid_dest_onSite_LD + self.grid_dest_inTravel
+            self.grid_total_LD = self.grid_origins_all_LD + self.grid_dest_onSite_LD + self.grid_dest_inTravel
             filename = sb.projDir + file_prefix + 'total_LD.asc'
-            np.savetxt(filename, np.flipud(grid_total_LD), fmt='%.4f', comments='', header=header)
+            np.savetxt(filename, np.flipud(self.grid_total_LD), fmt='%.4f', comments='', header=header)
             logging.info('   Written: ' + filename)
+        else:
+            self.grid_total_LD = None
+
+    def aggregateOutputData(self, sb):
+
+        # Aggregate the data from a single model run into a set of running totals
+        # these can be output at the end as a full set ot totals for all runs
+
+        if self.grid_origins_immob is not None:
+            try:
+                sb.aggregate_grid_origins_immob += self.grid_origins_immob
+            except:
+                sb.aggregate_grid_origins_immob = np.copy(self.grid_origins_immob)
+
+        if self.grid_origins_immob_LD is not None:
+            try:
+                sb.aggregate_grid_origins_immob_LD += self.grid_origins_immob_LD
+            except:
+                sb.aggregate_grid_origins_immob_LD = np.copy(self.grid_origins_immob_LD)
+
+        if self.grid_origins_remain is not None:
+            try:
+                sb.aggregate_grid_origins_remain += self.grid_origins_remain
+            except:
+                sb.aggregate_grid_origins_remain = np.copy(self.grid_origins_remain)
+
+        if self.grid_origins_remain_LD is not None:
+            try:
+                sb.aggregate_grid_origins_remain_LD += self.grid_origins_remain_LD
+            except:
+                sb.aggregate_grid_origins_remain_LD = np.copy(self.grid_origins_remain_LD)
+
+        if self.grid_dest_inTravel is not None:
+            try:
+                sb.aggregate_grid_dest_inTravel += self.grid_dest_inTravel
+            except:
+                sb.aggregate_grid_dest_inTravel = np.copy(self.grid_dest_inTravel)
+
+        if self.grid_dest_onSite is not None:
+            try:
+                sb.aggregate_grid_dest_onSite += self.grid_dest_onSite
+            except:
+                sb.aggregate_grid_dest_onSite = np.copy(self.grid_dest_onSite)
+
+        if self.grid_dest_onSite_LD is not None:
+            try:
+                sb.aggregate_grid_dest_onSite_LD += self.grid_dest_onSite_LD
+            except:
+                sb.aggregate_grid_dest_onSite_LD = np.copy(self.grid_dest_onSite_LD)
+
+        if self.grid_origins_all is not None:
+            try:
+                sb.aggregate_grid_origins_all += self.grid_origins_all
+            except:
+                sb.aggregate_grid_origins_all = np.copy(self.grid_origins_all)
+
+        if self.grid_origins_all_LD is not None:
+            try:
+                sb.aggregate_grid_origins_all_LD += self.grid_origins_all_LD
+            except:
+                sb.aggregate_grid_origins_all_LD = np.copy(self.grid_origins_all_LD)
+
+        if self.grid_total is not None:
+            try:
+                sb.aggregate_grid_total += self.grid_total
+            except:
+                sb.aggregate_grid_total = np.copy(self.grid_total)
+
+        if self.grid_total_LD is not None:
+            try:
+                sb.aggregate_grid_total_LD += self.grid_total_LD
+            except:
+                sb.aggregate_grid_total_LD = np.copy(self.grid_total_LD)
 
     def saveCSVData(self, sb, file_prefix):
 
@@ -687,3 +766,106 @@ class ModelRun:
 
             except IOError as e:
                 logging.error(e)
+                
+    def saveAggregatedOutputData(self, sb, file_prefix):
+
+        # Save aggregated grid data to files, including option for both Locally Dispersed
+        #   and not dispersed (probably never wanted, just for comparison)
+
+        # create a grid file header
+        header = 'ncols        {}\nnrows        {}\nxllcorner    {}\nyllcorner    {}\ncellsize     {}\nNODATA_value  -9999'.format(
+            sb.projParams.aarea_cols, sb.projParams.aarea_rows,
+            sb.projParams.aarea_bl_east, sb.projParams.aarea_bl_north,
+            sb.projParams.aarea_csize)
+
+        # aggregated grids are already clipped, so no cutting of the arrays needed
+
+        # use flipud (flip up down) as ASCII Grids are written top to bottom
+
+        try:
+            sb.aggregate_grid_origins_immob
+            filename = sb.projDir + file_prefix + 'origins_immob.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_origins_immob), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_origins_immob_LD
+            filename = sb.projDir + file_prefix + 'origins_immob_LD.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_origins_immob_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_origins_remain
+            filename = sb.projDir + file_prefix + 'origins_remain.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_origins_remain), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_origins_remain_LD
+            filename = sb.projDir + file_prefix + 'origins_remain_LD.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_origins_remain_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_dest_inTravel
+            filename = sb.projDir + file_prefix + 'dest_inTravel.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_dest_inTravel), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_dest_onSite
+            filename = sb.projDir + file_prefix + 'dest_onSite.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_dest_onSite), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_dest_onSite_LD
+            filename = sb.projDir + file_prefix + 'dest_onSite_LD.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_dest_onSite_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_origins_all
+            filename = sb.projDir + file_prefix + 'origins_all.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_origins_all), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_origins_all_LD
+            filename = sb.projDir + file_prefix + 'origins_all_LD.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_origins_all_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_total
+            filename = sb.projDir + file_prefix + 'total.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_total), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass
+
+        try:
+            sb.aggregate_grid_total_LD
+            filename = sb.projDir + file_prefix + 'total_LD.asc'
+            np.savetxt(filename, np.flipud(sb.aggregate_grid_total_LD), fmt='%.4f', comments='', header=header)
+            logging.info('   Written: ' + filename)
+        except:
+            pass

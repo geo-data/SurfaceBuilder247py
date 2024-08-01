@@ -3,7 +3,9 @@
 ### Developed by University of Southampton GeoData Institute
 ### on behalf of ONS
 
-v1.0 Jan-Mar 2022
+v1.0 Jan-Mar 2022 - Initial version  
+v1.1 Jul 2024 - Usability and file outputs improvements
+
 
 A Python (3.x and above) redevelopment of the original VB code.
 
