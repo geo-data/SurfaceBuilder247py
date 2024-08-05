@@ -99,7 +99,7 @@ def main():
     try:
         ageband = 'OV65'  # OV65 or 18_64
         run_date = datetime.date(2020, 2, 25)  # currently not used
-        run_time = datetime.time(8, 30, 0)
+        run_time = datetime.time(14, 0, 0)     # 2pm
 
         sb.runSBModel(ageband, run_date, run_time,
                       # optional testing parameters, for quick model run, remove or set to 1 for normal operation
@@ -111,9 +111,9 @@ def main():
                           cressman_power = 1)
 
         # Create a suitable path/file prefix for saving the files, based on model run parameters
-        file_prefix = 'Results/Bath_2011_0200_OTT_Paras_{}_{}_{}_'.format(ageband,
-                                                                          str(run_time.hour),
-                                                                          str(run_time.minute))
+        file_prefix = 'Results/Bath_2011_0200_OTT_Paras_{}_{:02}_{:02}_'.format(ageband,
+                                                                                run_time.hour,
+                                                                                run_time.minute)
 
         sb.saveOutputData(file_prefix, save_CSV_files = False, save_destination_file_grids = False)
 
@@ -205,7 +205,7 @@ def main_allages():
         # agebands = ['0_4','5_9','10_15','16_17','18_64','OV65']  # List of age groups to loop through
 
         run_date = datetime.date(2020, 2, 25)  # currently not used
-        run_time = datetime.time(8, 30, 0)
+        run_time = datetime.time(14, 0, 0)     # 2pm
 
         for ageband in agebands:
             sb.runSBModel(ageband, run_date, run_time,
@@ -218,9 +218,9 @@ def main_allages():
                               cressman_power = 1)
 
             # Create a suitable path/file prefix for saving the files, based on model run parameters
-            file_prefix = 'Results/Bath_2011_0200_OTT_Paras_{}_{}_{}_'.format(ageband,
-                                                                              str(run_time.hour),
-                                                                              str(run_time.minute))
+            file_prefix = 'Results/Bath_2011_0200_OTT_Paras_{}_{:02}_{:02}_'.format(ageband,
+                                                                                    run_time.hour,
+                                                                                    run_time.minute)
 
             sb.saveOutputData(file_prefix, save_CSV_files = False, save_destination_file_grids = False)
 
@@ -229,9 +229,9 @@ def main_allages():
 
             logging.info('\n{} Run successful.'.format(ageband))
 
-        file_prefix = 'Results/Bath_2011_0200_OTT_Paras_{}_{}_{}_'.format('Aggregated',
-                                                                          str(run_time.hour),
-                                                                          str(run_time.minute))
+        file_prefix = 'Results/Bath_2011_0200_OTT_Paras_{}_{:02}_{:02}_'.format('Aggregated',
+                                                                                run_time.hour,
+                                                                                run_time.minute)
 
         sb.saveAggregatedOutputData(file_prefix)
 
