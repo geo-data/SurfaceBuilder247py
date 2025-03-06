@@ -71,15 +71,21 @@ class GridCreate:
         #do dests in hash order, so we only need to keep the last used hash and WAD in memory
         sorted_indices = np.argsort(destination_data['hash'])  
         row_count = 0
+        cache_hits = 0
 
         for row in sorted_indices:
+
+            dest_pop = destination_data['inTravel'][row]
+
+            # Skip destinations with no InTransit pop
+            if dest_pop == 0: 
+                continue 
+
+            dest_pop_leftover = 0  # for storing pop amounts that have nowhere to go within a WAD
             
             dest_hash = destination_data['hash'][row]
             E = destination_data['eastings'][row]
             N = destination_data['northings'][row]
-
-            dest_pop = destination_data['inTravel'][row]
-            dest_pop_leftover = 0  # for storing pop amounts that have nowhere to go within a WAD
 
             if row_count % 1000 == 0:
                 #    print('.', end='', flush=True)
@@ -89,10 +95,25 @@ class GridCreate:
 
                 dest_WAD = cached_WAD
                 logging.debug("Already processed a dest with an identical E/N/WAD - re-using found cells")
+                cache_hits += 1
             else:
                 logging.debug("New E/N/WAD combo found - populating WAD with BG cells")
-                dest_WAD = copy.deepcopy(destination_data['WAD'][row])
-                # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty location list
+                
+                # Start with a shallow copy
+                base_wad = destination_data['WAD'][row] # list of: [ radius_sq, perc, origpop, list of origins ]
+
+                # Trim outer radii if set to zero - no population is spread to zero radii
+                outerpopwadrad = len(base_wad) - 1
+
+                while outerpopwadrad > 0:
+                    if base_wad[outerpopwadrad][1] != 0: break
+                    outerpopwadrad -= 1
+                        
+                # Create copy of WAD as list of [radius_sq, perc, pop_count, list of cells (empty)]
+                # Also ignore outer radii with zero precentages
+                dest_WAD = []
+                for w in base_wad[:outerpopwadrad + 1]:
+                    dest_WAD.append(w + [0,[]])
 
                 largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
                 potential_background_vals_array = backgroundLocationIndex.possible_locations(E, N, largest_radius)
@@ -111,7 +132,7 @@ class GridCreate:
                         for wad in dest_WAD:
                             if dist_sq <= wad[0]:  # within range
                                 if wad[1] > 0:  # any data (pc > 0) to be held in here at all
-                                    wad[2] += bg_val  # store the total origin population
+                                    wad[2] += bg_val  # store the total in transit population
                                     wad[3].append(bgcell)  # add the background index to our list
                                     break
                                 # otherwise it will get added to the next wad outward
@@ -153,13 +174,14 @@ class GridCreate:
 
             if dest_pop_leftover > 0:
                 # we've been through all of our WADs and there is still undistributed population (hopefully unlikely)
-                logging.info('     Destination {} had {:.3f} unallocated population'.format(row, dest_pop_leftover))
+                logging.info('     Destination {} has {:.3f} unallocatable in transit population'.format(row, dest_pop_leftover))
                 lost_pop += dest_pop_leftover
             
             row_count+= 1
 
         logging.info('\n     created - Loop count: {} in {} seconds'.format(loop_count,
                                                                             round(time.time() - initialTime, 1)))
+        logging.info('     WAD cache hits: {}'.format(cache_hits))
         logging.info('     Values total: {:.3f}  Dispersed Grid total: {:.3f}  Unallocated: {:.3f}'.format(sum(destination_data['inTravel']),
                                                                                       sum(sum(grid)), lost_pop))
 

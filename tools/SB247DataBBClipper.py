@@ -7,11 +7,6 @@
 # Created:     10/01/2019
 # Copyright:   (c) ajph 2019
 # Licence:     <your licence>
-#
-# Changelog:
-#
-#   ajph 28/1/22 Updated to run in Python 3
-#
 #-------------------------------------------------------------------------------
 
 # Expecting src and dest filenames as arguments, plus LLX, LLY, URX, URY coordinates
@@ -79,17 +74,16 @@ def main():
 
         header = {}
         headerOrder = []
-        inTxt = next(srcCSV)
+        inTxt = srcCSV.next()
         linePos = 1
 
         while inTxt[0] != '':
             header[inTxt[0]] = inTxt[1:]
             headerOrder.append(inTxt[0])
-            inTxt = next(srcCSV)
+            inTxt = srcCSV.next()
             linePos += 1
 
-        if 'DataBlock' in header:
-        # if header.has_key('DataBlock'):
+        if header.has_key('DataBlock'):
             dataStRow,dataRows = header['DataBlock'][1:3]
         else:
             print("  No DataBlock header line found, exiting")
@@ -103,7 +97,7 @@ def main():
 
         while linePos < int(dataStRow) -1:
             fillerRows.append(inTxt)
-            inTxt = next(srcCSV)
+            inTxt = srcCSV.next()
             linePos += 1
 
         # Insert last line read, as otherwise this will be dropped
@@ -119,8 +113,7 @@ def main():
             yCol = int(header['Y'][0])
             filtRowCt = 0
 
-            for (row,inTxt) in enumerate(srcCSV):
-                #print ('  Processing row: {}'.format(int(dataStRow) + row))
+            for inTxt in srcCSV:
                 ptX = float(inTxt[xCol - 1])
                 ptY = float(inTxt[yCol - 1])
 

@@ -684,9 +684,12 @@ class ProjectParams:
                     # consistent with what is inside the last radius:
                     #   new radius = square root ( last radius squared / percentage inside last radius)
                     #radius = math.sqrt(radius ** 2 / ((100 - perc) / 100))
-                    radius_sq = round(radius_sq / ((100 - perc) / 100))
+                    if perc == 100:
+                        radius_sq = radius_sq * 2
+                    else:
+                        radius_sq = round(radius_sq / ((100 - perc) / 100))
 
-                wad_pair = [ radius_sq, perc, 0, [] ]  # NOT a tuple, use array so we can append to it later
+                wad_pair = [ radius_sq, perc ]  # NOT a tuple, use array so we can append to it later
                 wad_pairs_list.append(wad_pair)
 
             dest_wad.append(wad_pairs_list)

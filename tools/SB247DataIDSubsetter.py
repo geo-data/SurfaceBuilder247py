@@ -7,11 +7,6 @@
 # Created:     05/02/2019
 # Copyright:   (c) ajph 2019
 # Licence:     <your licence>
-#
-# Changelog:
-#
-#   ajph 28/1/22 Updated to run in Python 3
-#
 #-------------------------------------------------------------------------------
 
 # Expecting src and dest filenames plus a file containing a list of IDs to retain as arguments
@@ -24,7 +19,7 @@
 ##
 
 
-import sys, os, string, csv
+import sys, os, csv
 
 def main():
 
@@ -89,17 +84,16 @@ def main():
 
         header = {}
         headerOrder = []
-        inTxt = next(srcCSV)
+        inTxt = srcCSV.__next__()
         linePos = 1
 
         while inTxt[0] != '':
             header[inTxt[0]] = inTxt[1:]
             headerOrder.append(inTxt[0])
-            inTxt = next(srcCSV)
+            inTxt = srcCSV.__next__()
             linePos += 1
 
         if 'DataBlock' in header:
-        # if header.has_key('DataBlock'):
             dataStRow,dataRows = header['DataBlock'][1:3]
         else:
             print("  No DataBlock header line found, exiting")
@@ -113,7 +107,7 @@ def main():
 
         while linePos < int(dataStRow) -1:
             fillerRows.append(inTxt)
-            inTxt = next(srcCSV)
+            inTxt = srcCSV.__next__()
             linePos += 1
 
         # Insert last line read, as otherwise this will be dropped
@@ -128,10 +122,7 @@ def main():
             idCol = int(header['IdentifyingCode'][0])
             filtRowCt = 0
 
-
-            for (row,inTxt) in enumerate(srcCSV):
-                #print ('  Processing row: {}'.format(int(dataStRow) + row))
-                
+            for inTxt in srcCSV:
                 curID = inTxt[idCol - 1]
 
                 if curID in idList:

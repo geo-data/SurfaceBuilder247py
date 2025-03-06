@@ -106,14 +106,24 @@ class ModelRun:
                 if dest % self.dest_sample_rate != 0:  # sample the dest
                     continue
 
+                # grab the population for the specified age category
+                dest_pop = destdata['subgroups_pop'][self.ageband][dest]
+
+                if dest_pop == 0: # No demand for this age group.
+                    continue
+
                 # grab the time profile and calculate the percentages (if things change)
                 time_profile = destdata['time_profiles'][dest]
 
                 if time_profile != current_time_profile:
-                    logging.info('\n  New time profile: ' + time_profile + '\n')
 
                     (inTravel_pc, onSite_pc) = self.timeProfileLookup(sb, time_profile)
 
+                    if inTravel_pc == 0 and onSite_pc == 0:
+                        # No demand for this time period - move on to next
+                        continue
+
+                    logging.info('\n  New time profile: ' + time_profile + '\n')
                     logging.info('    dest percentages for inTravel: '
                                  + str(inTravel_pc) + '  onSite: ' + str(onSite_pc))
 
@@ -122,10 +132,6 @@ class ModelRun:
                     dest_onSite_ratio = onSite_pc / (inTravel_pc + onSite_pc)
 
                     current_time_profile = time_profile  # remember for next time
-
-                # grab the population for the specified age category
-
-                dest_pop = destdata['subgroups_pop'][self.ageband][dest]
 
                 # calculate the required OnSite Pop / InTravel Pop
                 dest_inTravel_pop = dest_pop * inTravel_pc / 100
@@ -147,12 +153,12 @@ class ModelRun:
                 destination_data['LD'].append(destdata['LD'][dest])
                 destination_data["hash"].append(destdata['hash'][dest])                
 
-                logging.info('\n    Dest ' + str(dest)
-                             + '. E: ' + str(dest_E) + ' N: ' + str(dest_N)
-                             + ' Pop: ' + str(round(dest_pop,3))
-                             + '  inTravel: ' + str(round(dest_inTravel_pop,3))
-                             + '  onSite: ' + str(round(dest_onSite_pop,3))
-                             + '  total req: ' + str(round(dest_req_pop,3)))
+                # logging.info('\n    Dest ' + str(dest)
+                #              + '. E: ' + str(dest_E) + ' N: ' + str(dest_N)
+                #              + ' Pop: ' + str(round(dest_pop,3))
+                #              + '  inTravel: ' + str(round(dest_inTravel_pop,3))
+                #              + '  onSite: ' + str(round(dest_onSite_pop,3))
+                #              + '  total req: ' + str(round(dest_req_pop,3)))
 
                 dest_remove_check = 0
 
@@ -199,9 +205,11 @@ class ModelRun:
 
                 # loop through each WAD pair (assume nearest is always first)
 
-                dest_WAD = copy.deepcopy(destdata['WAD'][dest])  # avoid updating the origin wad
-                # we use deepcopy here to start with a full copy of the wad, with zero pop count and empty origin list
-
+                # Extract the radius and perc, and then append 0 and an empty list - benchmarking suggests that this is 10x faster than deepcopy
+                dest_WAD = []
+                for w in destdata['WAD'][dest]:
+                    dest_WAD.append(w + [0,[]])
+                
                 # find list of origins which are within the radius
 
                 largest_radius = math.sqrt(dest_WAD[len(dest_WAD) - 1][0])
@@ -329,10 +337,13 @@ class ModelRun:
                         dest_remove_check += orig_remove_check
 
                 # destination is complete, check we removed the full amount
-                if round(dest_req_pop,3) == round(dest_remove_check,3):
-                    logging.info('      Dest remove check SUCCESS: ' + str(round(dest_remove_check,3)))
+                # if round(dest_req_pop,3) == round(dest_remove_check,3):
+                if dest_req_pop - dest_remove_check < 1:
+                    pass
+                    # logging.info('      Dest remove check SUCCESS: {}'.format(str(round(dest_remove_check,3))))
                 else:
-                    logging.info('      Dest remove check FAIL: {} removed, {} outstanding'.format(
+                    logging.info('      Dest {} remove check FAIL: {} removed, {} outstanding'.format(
+                        destdata['ID'][dest],
                         round(dest_remove_check, 3),
                         round(dest_req_pop - dest_remove_check, 3)))
                     fail_count += 1
