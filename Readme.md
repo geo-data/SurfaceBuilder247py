@@ -4,7 +4,7 @@
 ### on behalf of ONS
 
 v1.0 Jan-Mar 2022 - Initial version  
-v1.1 Jul 2024 - Usability and file outputs improvements
+v1.1 Jul 2024 - Usability and file outputs improvements  
 v1.2 Mar 2025 - Bugfixes and optimisations Jan-Feb 2025
 
 A Python (3.x and above) redevelopment of the original VB code.
